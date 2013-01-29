@@ -53,6 +53,7 @@ BuildRequires:  desktop-file-utils
 BuildRequires:  autoconf2.1
 BuildRequires:  alsa-lib
 BuildRequires:  alsa
+BuildRequires:  libalsa-oss-devel
 BuildRequires:  yasm
 %if %{withxulrunner}
 BuildRequires:  xulrunner-devel
