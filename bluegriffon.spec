@@ -355,9 +355,6 @@ update-desktop-database &> /dev/null || :
 
 
 %changelog
-* Sun Nov 20 2011 Francesco Mancuso <mcfrank@tiscali.it> 1.2.1-69mib
-- bluegriffon 1.2.1 "Midas"
-- rediff patch100
-- MIB (Mandriva International Backport)  - http://mib.pianetalinux.org/
+
 
 
