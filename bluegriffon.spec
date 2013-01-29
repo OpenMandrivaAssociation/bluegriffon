@@ -52,6 +52,7 @@ BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildRequires:  desktop-file-utils
 BuildRequires:  autoconf2.1
 BuildRequires:  alsa-lib
+BuildRequires:  alsa
 BuildRequires:  yasm
 %if %{withxulrunner}
 BuildRequires:  xulrunner-devel
