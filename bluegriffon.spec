@@ -30,10 +30,10 @@ Summary(fr):    La nouvelle génération d'éditeur web
 Summary(it):    La nuova generazione editor di web
 Name:           bluegriffon
 Version:        1.5.2
-Release:        1
+Release:        2
 URL:            http://bluegriffon.org/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
-Group:          System/Servers
+Group:          Editors
 Source0:        firefox-%{srcversion}.tar.bz2
 Source1:        %{name}-%{version}.tar.bz2
 Source2:        %{name}-l10n-%{version}.tar.bz2
