@@ -55,6 +55,7 @@ BuildRequires:  alsa-lib
 BuildRequires:  alsa
 BuildRequires:  pkgconfig(alsa)
 BuildRequires:  yasm
+BuildRequires:  libmesagl-devel
 %if %{withxulrunner}
 BuildRequires:  xulrunner-devel
 %endif
