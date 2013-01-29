@@ -26,7 +26,7 @@
 %global srcversion      4.0.1
 
 Summary:        The next-generation Web Editor
-Summary(fr):    La nouvelle génération d'éditeur web
+Summary(fr):    La nouvelle gÃ©nÃ©ration d'Ã©diteur web
 Summary(it):    La nuova generazione editor di web
 Name:           bluegriffon
 Version:        1.5.2
@@ -50,6 +50,7 @@ Patch2:         mozilla-bz722975.patch
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:  desktop-file-utils
+BuildRequires:  autoconf2.1
 BuildRequires:  yasm
 %if %{withxulrunner}
 BuildRequires:  xulrunner-devel
@@ -138,17 +139,17 @@ and robust solution to edit Web pages in conformance to the latest
 Web Standards.
 
 %description -l fr
-BlueGriffon est un nouvel éditeur de page web WYSIWYG.
+BlueGriffon est un nouvel Ã©diteur de page web WYSIWYG.
 
-Basé sur Gecko, le moteur de rendu de Firefox 4, c'est une solution
-moderne et fiable pour éditer des pages Web conformes aux dernières
+BasÃ© sur Gecko, le moteur de rendu de Firefox 4, c'est une solution
+moderne et fiable pour Ã©diter des pages Web conformes aux derniÃ¨res
 normes w3c.
 
 %description -l it
-BlueGriffon è un nuovo editor di pagine web WYSIWYG.
+BlueGriffon Ã¨ un nuovo editor di pagine web WYSIWYG.
 
-Basato su Gecko, il motore di rendering di Firefox 4, Ã¨ una soluzione
-moderna e robusta per un editor di pagine Web conforme alle piÃ¹ recenti
+Basato su Gecko, il motore di rendering di Firefox 4, ÃƒÂ¨ una soluzione
+moderna e robusta per un editor di pagine Web conforme alle piÃƒÂ¹ recenti
 norme w3c.
 
 %prep
@@ -355,55 +356,4 @@ update-desktop-database &> /dev/null || :
 - rediff patch100
 - MIB (Mandriva International Backport)  - http://mib.pianetalinux.org/
 
-* Fri May 13 2011 Francesco Mancuso <mcfrank@tiscali.it> 1.0-69.2mib
-- bluegriffon 1.0 Zephyr
-- rebuilt vs new sqlite3
-- MIB (Mandriva International Backport)  - http://mib.pianetalinux.org/
-
-* Mon May 09 2011 Francesco Mancuso <mcfrank@tiscali.it> 1.0-69.1mib
-- bluegriffon 1.0 Zephyr
-- MIB (Mandriva International Backport)  - http://mib.pianetalinux.org/
-
-* Wed May 04 2011 Francesco Mancuso <mcfrank@tiscali.it> 1.0-0.2svn678.69.1mib
-- bluegriffon 1.0pre1, svn 678, locales svn 65  "Estagnots"
-- MIB (Mandriva International Backport)  - http://mib.pianetalinux.org/
-
-* Thu Apr 28 2011 Remi Collet <rpms@famillecollet.com> - 1.0-0.2.svn651
-- bluegriffon 1.0pre1, svn 651, locales svn 56
-- build against xulrunner 2.0.1
-- add Gnome3 patch from Firefox
-
-* Sun Apr 17 2011 Remi Collet <rpms@famillecollet.com> - 1.0-0.1.svn635
-- bluegriffon 1.0pre1, svn 635, locales svn 47
-- build against xulrunner 2.0.1 build1 candidate
-
-* Mon Mar 29 2011 Remi Collet <rpms@famillecollet.com> - 0.9.1-1
-- BlueGriffon 0.9.1 "Coffee Overflow"
-  http://bluegriffon.org/post/2011/03/29/BlueGriffon-0.9.1-Coffee-Overflow
-
-* Mon Feb 14 2011 Francesco Mancuso <mcfrank@tiscali.it> 0.9-0.svn563
-- bluegriffon svn 563
-- First build 4 MIB
-- MIB (Mandriva Italia Backport)  - http://mib.pianetalinux.org/
-
-* Wed Feb 09 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.6.svn554
-- bluegriffon svn 554
-
-* Wed Feb 09 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.5.svn553
-- bluegriffon svn 553, locales svn 23
-- rebuild against xulrunnner 2.0b11
-
-* Sat Feb 05 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.4.svn541
-- rebuild
-
-* Fri Feb 04 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.3.svn540
-- add stuff to build against system xulrunner2
-
-* Mon Jan 31 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.2.svn540
-- split sources
-- more patches from Firefox (fix rawhide build)
-- add french sumnary/description
-
-* Fri Jan 28 2011 Remi Collet <rpms@famillecollet.com> - 0.9-0.1.hg20110128
-- first work on RPM - BlueGriffon 0.9rc1
 
