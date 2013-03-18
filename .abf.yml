@@ -1,7 +1,4 @@
-removed_sources:
-  bluegriffon-1.6.1.tar.bz2: e70f3cd6592005aee947eaea595b3059bc7f5ccc
-  bluegriffon-l10n-1.6.1.tar.bz2: 9d572e6c7661cabeaf84cb11afbe2ed67d52344a
 sources:
   bluegriffon-1.6.2.tar.bz2: 68cf4fc67cf78d33d83a083dc1cf0d9c5e4d88e9
-  bluegriffon-l10n-1.6.2.tar.bz2: 6ae457b82615733a578ad827770f99ec76e0a36a
+  bluegriffon-l10n-1.6.2.tar.bz2: 6d37c167976c9ff54ce1bffeb2f4dd910b55db3f
   firefox-4.0.1.tar.bz2: b237e8d41449058427babd8e7f85c16676faa39f
