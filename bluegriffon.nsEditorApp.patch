@@ -1,0 +1,30 @@
+diff -Nur mozilla-2.0.old/bluegriffon/app/nsEditorApp.cpp mozilla-2.0/bluegriffon/app/nsEditorApp.cpp
+--- mozilla-2.0.old/bluegriffon/app/nsEditorApp.cpp	2013-03-18 18:39:02.000000000 +0400
++++ mozilla-2.0/bluegriffon/app/nsEditorApp.cpp	2013-03-20 13:06:14.513762761 +0400
+@@ -112,7 +112,7 @@
+ {
+   ScopedLogging log;
+ 
+-  nsCOMPtr<nsIFile> appini;
++  nsCOMPtr<nsILocalFile> appini;
+   nsresult rv = XRE_GetBinaryPath(argv[0], getter_AddRefs(appini));
+   if (NS_FAILED(rv)) {
+     Output("Couldn't calculate the application directory.");
+@@ -122,7 +122,7 @@
+ 
+   // Allow firefox.exe to launch XULRunner apps via -app <application.ini>
+   // Note that -app must be the *first* argument.
+-  char *appEnv = nullptr;
++  char *appEnv = nsnull;
+   const char *appDataFile = PR_GetEnv("XUL_APP_FILE");
+   if (appDataFile && *appDataFile) {
+     rv = XRE_GetFileFromPath(appDataFile, getter_AddRefs(appini));
+@@ -157,7 +157,7 @@
+     return 255;
+   }
+ 
+-  int result = XRE_main(argc, argv, appData, 0);
++  int result = XRE_main(argc, argv, appData);
+   XRE_FreeAppData(appData);
+   if (appEnv)
+     PR_smprintf_free(appEnv);
