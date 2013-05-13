@@ -77,20 +77,20 @@ BuildRequires:  zip
 BuildRequires:  libIDL-devel
 BuildRequires:  gtk2-devel
 BuildRequires:  gnome-vfs2-devel
-BuildRequires:  libgnomeui2-devel
+BuildRequires:  pkgconfig(libgnomeui-2.0)
 BuildRequires:  krb5-devel
 BuildRequires:  pango-devel
 BuildRequires:  freetype2-devel >= 2.1.9
 %if %mdkversion >= 201010
 %ifarch %ix86
-BuildRequires:  libxt-devel
+BuildRequires:  pkgconfig(xt)
 %endif
 %ifarch x86_64
 BuildRequires:  lib64xt-devel
 %endif
 %else
 %ifarch %ix86
-BuildRequires:  libxt-devel
+BuildRequires:  pkgconfig(xt)
 %endif
 %if %mdkversion >= 201010
 %ifarch x86_64
@@ -103,7 +103,7 @@ BuildRequires:  lib64xt6-devel
 %endif
 %endif
 %endif
-BuildRequires:  libxrender-devel
+BuildRequires:  pkgconfig(xrender)
 BuildRequires:  startup-notification-devel
 BuildRequires:  wireless-tools libiw-devel
 
@@ -115,10 +115,10 @@ BuildRequires:  nss-devel >= %{nss_version}
 BuildRequires:  hunspell-devel
 BuildRequires:  cairo-devel
 # >= %{cairo_version}
-BuildRequires:  libnotify-devel
+BuildRequires:  pkgconfig(libnotify)
 BuildRequires:  lcms-devel >= %{lcms_version}
-BuildRequires:  libpng-devel
-BuildRequires:  libjpeg-devel
+BuildRequires:  pkgconfig(libpng)
+BuildRequires:  jpeg-devel = 1:1.2.1-1:2012.1
 BuildRequires:  bzip2-devel
 BuildRequires:  zlib-devel
 BuildRequires:  libgnome-devel
