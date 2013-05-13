@@ -30,7 +30,7 @@ Summary(fr):    La nouvelle génération d'éditeur web
 Summary(it):    La nuova generazione editor di web
 Name:           bluegriffon
 Version:        1.6.2
-Release:        3
+Release:        4
 URL:            http://bluegriffon.org/
 License:        MPLv1.1 or GPLv2+ or LGPLv2+
 Group:          Editors
@@ -48,7 +48,6 @@ Patch1:         mozilla-bz736961.patch
 Patch2:         mozilla-bz722975.patch
 Patch3:         bluegriffon.nsEditorApp.patch
 
-BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  autoconf2.1
