@@ -1,0 +1,23 @@
+diff -urN mozilla-2.0/build/virtualenv/packages.txt mozilla-2.0-patched/build/virtualenv/packages.txt
+--- mozilla-2.0/build/virtualenv/packages.txt	2013-05-19 06:39:06.000000000 +1100
++++ mozilla-2.0-patched/build/virtualenv/packages.txt	2013-06-28 18:18:09.378718948 +1100
+@@ -4,8 +4,6 @@
+ mach.pth:python/mach
+ mozbuild.pth:python/mozbuild
+ pymake.pth:build/pymake
+-optional:setup.py:python/psutil:build_ext:--inplace
+-optional:psutil.pth:python/psutil
+ which.pth:python/which
+ ply.pth:other-licenses/ply/
+ codegen.pth:python/codegen/
+diff -urN mozilla-2.0/js/src/config/check-sync-exceptions mozilla-2.0-patched/js/src/config/check-sync-exceptions
+--- mozilla-2.0/js/src/config/check-sync-exceptions	2013-05-19 06:39:17.000000000 +1100
++++ mozilla-2.0-patched/js/src/config/check-sync-exceptions	2013-06-28 18:15:57.064656072 +1100
+@@ -2,6 +2,7 @@
+ Makefile
+ autoconf.mk.in
+ autoconf.mk
++backend.mk
+ baseconfig.mk
+ check-sync-dirs.py
+ static-checking-config.mk
