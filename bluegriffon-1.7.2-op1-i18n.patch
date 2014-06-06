@@ -1,0 +1,15 @@
+diff -urN mozilla-2.0/bluegriffon/langpacks/ru/bluegriffon/chrome.manifest mozilla-2.0-patched/bluegriffon/langpacks/ru/bluegriffon/chrome.manifest
+--- mozilla-2.0/bluegriffon/langpacks/ru/bluegriffon/chrome.manifest	2013-08-04 14:16:42.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/langpacks/ru/bluegriffon/chrome.manifest	2013-08-11 19:18:51.947669564 +0400
+@@ -2,9 +2,11 @@
+ locale branding ru base/locale/branding/
+ locale fs ru extensions/fs/
+ locale gfd ru extensions/gfd/
++locale op1 ru extensions/op1/
+ locale cssproperties ru sidebars/cssproperties/
+ locale domexplorer ru sidebars/domexplorer/
+ locale scripteditor ru sidebars/scripteditor/
+ locale stylesheets ru sidebars/stylesheets/
+ locale tipoftheday ru extensions/tipoftheday/
+ 
++

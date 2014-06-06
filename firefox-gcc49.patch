@@ -1,0 +1,421 @@
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptc_gcc_x86_unix.h mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptc_gcc_x86_unix.h
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptc_gcc_x86_unix.h	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptc_gcc_x86_unix.h	2014-06-07 02:58:29.619749444 +1100
+@@ -15,5 +15,3 @@
+ #define SYMBOL_UNDERSCORE
+ #endif
+ 
+-
+-#define ATTRIBUTE_USED __attribute__ ((__used__))
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_alpha_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_alpha_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_alpha_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_alpha_openbsd.cpp	2014-06-07 02:58:29.622749494 +1100
+@@ -11,7 +11,7 @@
+ /* Prototype specifies unmangled function name and disables unused warning */
+ static nsresult
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint64_t* args)
+-__asm__("PrepareAndDispatch") __attribute__((used));
++__asm__("PrepareAndDispatch") ATTRIBUTE_USED;
+ 
+ static nsresult
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint64_t* args)
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_amd64_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_amd64_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_amd64_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_amd64_openbsd.cpp	2014-06-07 03:00:47.108054688 +1100
+@@ -28,7 +28,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase * self, uint32_t methodIndex,
+                    uint64_t * args, uint64_t * gpregs, double *fpregs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm.cpp	2014-06-07 02:58:29.635749712 +1100
+@@ -12,21 +12,9 @@
+ #error "This code is for Linux ARM only. Please check if it works for you, too.\nDepends strongly on gcc behaviour."
+ #endif
+ 
+-#ifdef __GNUC__
+-/* This tells gcc3.4+ not to optimize away symbols.
+- * @see http://gcc.gnu.org/gcc-3.4/changes.html
+- */
+-#define DONT_DROP_OR_WARN __attribute__((used))
+-#else
+-/* This tells older gccs not to warn about unused vairables.
+- * @see http://docs.freebsd.org/info/gcc/gcc.info.Variable_Attributes.html
+- */
+-#define DONT_DROP_OR_WARN __attribute__((unused))
+-#endif
+-
+ /* Specify explicitly a symbol for this function, don't try to guess the c++ mangled symbol.  */
+ static nsresult PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args) asm("_PrepareAndDispatch")
+-DONT_DROP_OR_WARN;
++ATTRIBUTE_USED;
+ 
+ #ifdef __ARM_EABI__
+ #define DOUBLEWORD_ALIGN(p) ((uint32_t *)((((uint32_t)(p)) + 7) & 0xfffffff8))
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_netbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_netbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_netbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_netbsd.cpp	2014-06-07 03:01:09.003421490 +1100
+@@ -7,7 +7,7 @@
+ 
+ #include "xptcprivate.h"
+ 
+-nsresult
++nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ #define PARAM_BUFFER_COUNT     16
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_arm_openbsd.cpp	2014-06-07 03:01:23.862670372 +1100
+@@ -24,7 +24,7 @@
+ static nsresult PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args) asm("_PrepareAndDispatch")
+ DONT_DROP_OR_WARN;
+ 
+-static nsresult
++static nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ #define PARAM_BUFFER_COUNT     16
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf32.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf32.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf32.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf32.cpp	2014-06-07 02:58:29.639749780 +1100
+@@ -16,7 +16,7 @@
+ 
+ /* Implement shared vtbl methods. */
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex,
+   uint64_t* intargs, uint64_t* floatargs, uint64_t* restargs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf64.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf64.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf64.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ipf64.cpp	2014-06-07 02:58:29.647749914 +1100
+@@ -17,7 +17,7 @@
+ 
+ /* Implement shared vtbl methods. */
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex,
+   uint64_t* intargs, uint64_t* floatargs, uint64_t* restargs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_alpha.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_alpha.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_alpha.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_alpha.cpp	2014-06-07 02:58:29.651749981 +1100
+@@ -11,7 +11,7 @@
+ /* Prototype specifies unmangled function name and disables unused warning */
+ static nsresult
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint64_t* args)
+-__asm__("PrepareAndDispatch") __attribute__((used));
++__asm__("PrepareAndDispatch") ATTRIBUTE_USED;
+ 
+ static nsresult
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint64_t* args)
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_m68k.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_m68k.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_m68k.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_m68k.cpp	2014-06-07 03:02:31.064795475 +1100
+@@ -9,7 +9,7 @@
+ #include "xptiprivate.h"
+ 
+ extern "C" {
+-    nsresult
++    nsresult ATTRIBUTE_USED
+     PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+     {
+ #define PARAM_BUFFER_COUNT     16
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390.cpp	2014-06-07 02:58:29.653750014 +1100
+@@ -9,7 +9,7 @@
+ #include "xptcprivate.h"
+ #include "xptiprivate.h"
+ 
+-static nsresult
++static nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, 
+                    uint32_t* a_gpr, uint64_t *a_fpr, uint32_t *a_ov)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390x.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390x.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390x.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_linux_s390x.cpp	2014-06-07 02:58:29.653750014 +1100
+@@ -9,7 +9,7 @@
+ #include "xptcprivate.h"
+ #include "xptiprivate.h"
+ 
+-static nsresult
++static nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, 
+                    uint64_t* a_gpr, uint64_t *a_fpr, uint64_t *a_ov)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips64.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips64.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips64.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips64.cpp	2014-06-07 02:58:29.654750031 +1100
+@@ -20,7 +20,7 @@
+  * they are stored on the stack at address "args".
+  *
+  */
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint64_t* args,
+                    uint64_t *gprData, double *fprData)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_mips.cpp	2014-06-07 02:58:29.653750014 +1100
+@@ -15,7 +15,7 @@
+  * Args contains a0-3 and then the stack.
+  * Because a0 is 'this', we want to skip it
+  */
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+     args++; // always skip over a0
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_netbsd_m68k.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_netbsd_m68k.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_netbsd_m68k.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_netbsd_m68k.cpp	2014-06-07 03:02:42.115980420 +1100
+@@ -12,7 +12,7 @@
+ #endif
+ 
+ extern "C" {
+-    static nsresult
++    static nsresult ATTRIBUTE_USED
+     PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+     {
+ #define PARAM_BUFFER_COUNT     16
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_pa32.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_pa32.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_pa32.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_pa32.cpp	2014-06-07 02:58:29.654750031 +1100
+@@ -14,7 +14,7 @@
+ #error "This code is for HP-PA RISC 32 bit mode only"
+ #endif
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex,
+   uint32_t* args, uint32_t* floatargs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc64_linux.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc64_linux.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc64_linux.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc64_linux.cpp	2014-06-07 02:58:29.655750048 +1100
+@@ -32,7 +32,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ #include <stdio.h>
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self,
+                    uint64_t methodIndex,
+                    uint64_t* args,
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix64.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix64.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix64.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix64.cpp	2014-06-07 02:58:29.655750048 +1100
+@@ -15,7 +15,7 @@
+         The args pointer has been set to the start of the parameters BEYOND the ones
+         arriving in registers
+ */
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint64_t methodIndex, uint64_t* args, uint64_t *gprData, double *fprData)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_aix.cpp	2014-06-07 02:58:29.655750048 +1100
+@@ -16,7 +16,7 @@
+         The args pointer has been set to the start of the parameters BEYOND the ones
+         arriving in registers
+ */
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args, uint32_t *gprData, double *fprData)
+ {
+     typedef struct {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_linux.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_linux.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_linux.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_linux.cpp	2014-06-07 02:58:29.656750065 +1100
+@@ -31,7 +31,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self,
+                    uint32_t methodIndex,
+                    uint32_t* args,
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_netbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_netbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_netbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_netbsd.cpp	2014-06-07 02:58:29.656750065 +1100
+@@ -27,7 +27,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self,
+                    uint32_t methodIndex,
+                    uint32_t* args,
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_openbsd.cpp	2014-06-07 02:58:29.656750065 +1100
+@@ -28,7 +28,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self,
+                    uint32_t methodIndex,
+                    uint32_t* args,
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_rhapsody.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_rhapsody.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_rhapsody.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_ppc_rhapsody.cpp	2014-06-07 02:58:29.657750081 +1100
+@@ -35,7 +35,7 @@
+  * http://developer.apple.com/documentation/DeveloperTools/Conceptual/
+  *  MachORuntime/PowerPCConventions/chapter_3_section_1.html */
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(
+   nsXPTCStubBase *self,
+   uint32_t        methodIndex,
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc64_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc64_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc64_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc64_openbsd.cpp	2014-06-07 02:58:29.657750081 +1100
+@@ -11,7 +11,7 @@
+ 
+ #if defined(sparc) || defined(__sparc__)
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint64_t methodIndex, uint64_t* args)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_netbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_netbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_netbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_netbsd.cpp	2014-06-07 02:58:29.657750081 +1100
+@@ -9,7 +9,7 @@
+ 
+ #if defined(sparc) || defined(__sparc__)
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_openbsd.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_openbsd.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_openbsd.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_openbsd.cpp	2014-06-07 02:58:29.657750081 +1100
+@@ -9,7 +9,7 @@
+ 
+ #if defined(sparc) || defined(__sparc__)
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_solaris.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_solaris.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_solaris.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparc_solaris.cpp	2014-06-07 02:58:29.658750098 +1100
+@@ -10,7 +10,7 @@
+ 
+ #if defined(sparc) || defined(__sparc__)
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparcv9_solaris.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparcv9_solaris.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparcv9_solaris.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_sparcv9_solaris.cpp	2014-06-07 02:58:29.658750098 +1100
+@@ -11,7 +11,7 @@
+ 
+ #if defined(sparc) || defined(__sparc__)
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint64_t methodIndex, uint64_t* args)
+ {
+ 
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_darwin.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_darwin.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_darwin.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_darwin.cpp	2014-06-07 03:03:00.096281280 +1100
+@@ -30,7 +30,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase * self, uint32_t methodIndex,
+                    uint64_t * args, uint64_t * gpregs, double *fpregs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_linux.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_linux.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_linux.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_linux.cpp	2014-06-07 03:03:11.498472041 +1100
+@@ -30,7 +30,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase * self, uint32_t methodIndex,
+                    uint64_t * args, uint64_t * gpregs, double *fpregs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_solaris.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_solaris.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_solaris.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_64_solaris.cpp	2014-06-07 03:03:32.624825431 +1100
+@@ -30,7 +30,7 @@
+ // The parameters are mapped into an array of type 'nsXPTCMiniVariant'
+ // and then the method gets called.
+ 
+-extern "C" nsresult
++extern "C" nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase * self, uint32_t methodIndex,
+                    uint64_t * args, uint64_t * gpregs, double *fpregs)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_solaris.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_solaris.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_solaris.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/unix/xptcstubs_x86_solaris.cpp	2014-06-07 03:03:44.994032302 +1100
+@@ -9,7 +9,7 @@
+ #include "xptcprivate.h"
+ #include "xptiprivate.h"
+ 
+-nsresult
++nsresult ATTRIBUTE_USED
+ PrepareAndDispatch(nsXPTCStubBase* self, uint32_t methodIndex, uint32_t* args)
+ {
+ #define PARAM_BUFFER_COUNT     16
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/md/win32/xptcstubs_x86_64_gnu.cpp mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/win32/xptcstubs_x86_64_gnu.cpp
+--- mozilla-2.0/xpcom/reflect/xptcall/src/md/win32/xptcstubs_x86_64_gnu.cpp	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/md/win32/xptcstubs_x86_64_gnu.cpp	2014-06-07 02:58:29.660750132 +1100
+@@ -16,7 +16,7 @@
+ #  error xptcstubs_x86_64_gnu.cpp being used unexpectedly
+ #endif
+ 
+-extern "C" nsresult
++extern "C" nsresult __attribute__((__used__))
+ PrepareAndDispatch(nsXPTCStubBase * self, uint32_t methodIndex,
+                    uint64_t * args, uint64_t * gprData, double *fprData)
+ {
+diff -urN mozilla-2.0/xpcom/reflect/xptcall/src/xptcprivate.h mozilla-2.0-patched/xpcom/reflect/xptcall/src/xptcprivate.h
+--- mozilla-2.0/xpcom/reflect/xptcall/src/xptcprivate.h	2013-05-19 06:39:45.000000000 +1100
++++ mozilla-2.0-patched/xpcom/reflect/xptcall/src/xptcprivate.h	2014-06-07 02:58:29.660750132 +1100
+@@ -58,4 +58,10 @@
+ #undef STUB_ENTRY
+ #undef SENTINEL_ENTRY
+ 
++#if defined(__clang__) || defined(__GNUC__)
++#define ATTRIBUTE_USED __attribute__ ((__used__))
++#else
++#define ATTRIBUTE_USED
++#endif
++
+ #endif /* xptcprivate_h___ */

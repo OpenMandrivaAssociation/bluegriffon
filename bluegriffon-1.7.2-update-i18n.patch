@@ -1,0 +1,187 @@
+diff -urN mozilla-2.0/bluegriffon/langpacks/getlangpacks.sh mozilla-2.0-patched/bluegriffon/langpacks/getlangpacks.sh
+--- mozilla-2.0/bluegriffon/langpacks/getlangpacks.sh	2013-04-11 17:00:16.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/langpacks/getlangpacks.sh	2013-08-10 12:36:53.195640525 +0400
+@@ -3,7 +3,7 @@
+ VERSION=$1
+ BG_VERSION=$2
+ 
+-LOCALES="cs de es-ES fi fr gl he hu it ja ko nl pl sl sr sv-SE zh-CN zh-TW"
++LOCALES="cs de es-ES fi fr gl he hu it ja ko nl pl ru sl sr sv-SE zh-CN zh-TW"
+ #LOCALES="gl"
+ 
+ R_VERSION=`echo $VERSION | sed -e "s/\./\\\\\./g" | sed -e "s/\n//"`
+diff -urN mozilla-2.0/bluegriffon/langpacks/Makefile.in mozilla-2.0-patched/bluegriffon/langpacks/Makefile.in
+--- mozilla-2.0/bluegriffon/langpacks/Makefile.in	2012-12-18 18:34:44.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/langpacks/Makefile.in	2013-08-10 12:37:24.548248564 +0400
+@@ -25,6 +25,7 @@
+     ko \
+     nl \
+     pl \
++    ru \
+     sl \
+     sv-SE \
+     zh-CN \
+diff -urN mozilla-2.0/bluegriffon/stubs/csseditor/install.rdf mozilla-2.0-patched/bluegriffon/stubs/csseditor/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/csseditor/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/csseditor/install.rdf	2013-08-08 18:42:00.000000000 +0400
+@@ -26,6 +26,7 @@
+       <Description about="csseditor.jar">
+         <em:package>content/</em:package>
+         <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/csseditor/jar.mn mozilla-2.0-patched/bluegriffon/stubs/csseditor/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/csseditor/jar.mn	2011-05-30 12:20:31.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/csseditor/jar.mn	2013-08-08 18:52:55.000000000 +0400
+@@ -15,3 +15,6 @@
+ % locale  csseditor   en-US       %locale/en-US/
+   locale/en-US/csseditorOverlay.dtd  (locale/en-US/csseditorOverlay.dtd)
+   locale/en-US/csseditorOverlay.properties  (locale/en-US/csseditorOverlay.properties)
++% locale  csseditor   ru       %locale/ru/
++  locale/ru/csseditorOverlay.dtd  (locale/ru/csseditorOverlay.dtd)
++  locale/ru/csseditorOverlay.properties  (locale/ru/csseditorOverlay.properties)
+diff -urN mozilla-2.0/bluegriffon/stubs/eyedropper/jar.mn mozilla-2.0-patched/bluegriffon/stubs/eyedropper/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/eyedropper/jar.mn	2011-09-16 16:28:44.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/eyedropper/jar.mn	2013-08-08 19:04:07.000000000 +0400
+@@ -12,4 +12,7 @@
+ % locale  eyedropper   en-US       %locale/en-US/
+   locale/en-US/eyedropperOverlay.dtd  (locale/en-US/eyedropperOverlay.dtd)
+   locale/en-US/eyedropperOverlay.properties  (locale/en-US/eyedropperOverlay.properties)
++% locale  eyedropper   ru       %locale/ru/
++  locale/ru/eyedropperOverlay.dtd  (locale/ru/eyedropperOverlay.dtd)
++  locale/ru/eyedropperOverlay.properties  (locale/ru/eyedropperOverlay.properties)
+   
+\ В конце файла нет новой строки
+diff -urN mozilla-2.0/bluegriffon/stubs/fullscreen/install.rdf mozilla-2.0-patched/bluegriffon/stubs/fullscreen/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/fullscreen/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/fullscreen/install.rdf	2013-08-08 19:05:12.000000000 +0400
+@@ -25,7 +25,8 @@
+     <em:file>
+       <Description about="fullscreen.jar">
+         <em:package>content/</em:package>
+-        <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/en-US/</em:locale>
++        <em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/fullscreen/jar.mn mozilla-2.0-patched/bluegriffon/stubs/fullscreen/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/fullscreen/jar.mn	2011-05-12 14:15:54.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/fullscreen/jar.mn	2013-08-08 19:05:40.000000000 +0400
+@@ -13,4 +13,7 @@
+ % locale  fullscreen   en-US       %locale/en-US/
+   locale/en-US/fullscreenOverlay.dtd  (locale/en-US/fullscreenOverlay.dtd)
+   locale/en-US/fullscreenOverlay.properties  (locale/en-US/fullscreenOverlay.properties)
++% locale  fullscreen   ru       %locale/ru/
++  locale/ru/fullscreenOverlay.dtd  (locale/ru/fullscreenOverlay.dtd)
++  locale/ru/fullscreenOverlay.properties  (locale/ru/fullscreenOverlay.properties)
+   
+\ В конце файла нет новой строки
+diff -urN mozilla-2.0/bluegriffon/stubs/mathml2/install.rdf mozilla-2.0-patched/bluegriffon/stubs/mathml2/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/mathml2/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/mathml2/install.rdf	2013-08-08 19:06:15.000000000 +0400
+@@ -25,7 +25,8 @@
+     <em:file>
+       <Description about="wordcount.jar">
+         <em:package>content/</em:package>
+-        <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/en-US/</em:locale>
++        <em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/mathml2/jar.mn mozilla-2.0-patched/bluegriffon/stubs/mathml2/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/mathml2/jar.mn	2013-03-07 20:11:07.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/mathml2/jar.mn	2013-08-08 19:06:49.000000000 +0400
+@@ -17,3 +17,6 @@
+ % locale    mathml    en-US    %locale/en-US/mathml/
+   locale/en-US/mathml/mathmlOverlay.dtd      (locale/en-US/mathmlOverlay.dtd)
+   locale/en-US/mathml/mathmlOverlay.properties      (locale/en-US/mathmlOverlay.properties)
++% locale    mathml    ru    %locale/ru/mathml/
++  locale/ru/mathml/mathmlOverlay.dtd      (locale/ru/mathmlOverlay.dtd)
++  locale/ru/mathml/mathmlOverlay.properties      (locale/ru/mathmlOverlay.properties)
+diff -urN mozilla-2.0/bluegriffon/stubs/snippets/install.rdf mozilla-2.0-patched/bluegriffon/stubs/snippets/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/snippets/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/snippets/install.rdf	2013-08-08 19:07:31.000000000 +0400
+@@ -25,7 +25,8 @@
+     <em:file>
+       <Description about="snippets.jar">
+         <em:package>content/</em:package>
+-        <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/en-US/</em:locale>
++        <em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/snippets/jar.mn mozilla-2.0-patched/bluegriffon/stubs/snippets/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/snippets/jar.mn	2011-05-13 16:28:57.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/snippets/jar.mn	2013-08-08 19:08:09.000000000 +0400
+@@ -14,4 +14,7 @@
+ % locale    snippets    en-US		%locale/en-US/snippets/
+   locale/en-US/snippets/snippetsOverlay.dtd   (locale/en-US/snippetsOverlay.dtd)
+   locale/en-US/snippets/snippetsOverlay.properties   (locale/en-US/snippetsOverlay.properties)
++% locale    snippets    ru		%locale/ru/snippets/
++  locale/ru/snippets/snippetsOverlay.dtd   (locale/ru/snippetsOverlay.dtd)
++  locale/ru/snippets/snippetsOverlay.properties   (locale/ru/snippetsOverlay.properties)
+ 	
+\ В конце файла нет новой строки
+diff -urN mozilla-2.0/bluegriffon/stubs/tableLayout/install.rdf mozilla-2.0-patched/bluegriffon/stubs/tableLayout/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/tableLayout/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/tableLayout/install.rdf	2013-08-08 18:57:31.000000000 +0400
+@@ -25,6 +25,7 @@
+       <Description about="tablelayout.jar">
+         <em:package>content/</em:package>
+         <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/tableLayout/jar.mn mozilla-2.0-patched/bluegriffon/stubs/tableLayout/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/tableLayout/jar.mn	2011-05-12 14:15:54.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/tableLayout/jar.mn	2013-08-08 18:56:49.000000000 +0400
+@@ -14,3 +14,6 @@
+ % locale  tablelayout   en-US       %locale/en-US/
+   locale/en-US/tablelayoutOverlay.dtd                 (locale/en-US/tablelayoutOverlay.dtd)
+   locale/en-US/tablelayoutOverlay.properties                 (locale/en-US/tablelayoutOverlay.properties)
++% locale  tablelayout   ru       %locale/ru/
++  locale/ru/tablelayoutOverlay.dtd                 (locale/ru/tablelayoutOverlay.dtd)
++  locale/ru/tablelayoutOverlay.properties                 (locale/ru/tablelayoutOverlay.properties)
+\ В конце файла нет новой строки
+diff -urN mozilla-2.0/bluegriffon/stubs/templatesManager2/jar.mn mozilla-2.0-patched/bluegriffon/stubs/templatesManager2/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/templatesManager2/jar.mn	2012-02-03 22:47:27.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/templatesManager2/jar.mn	2013-08-08 19:16:05.000000000 +0400
+@@ -23,3 +23,9 @@
+   locale/en-US/templatesManager.properties                 (locale/en-US/templatesManager.properties)
+   locale/en-US/addonRequired.properties                    (locale/en-US/addonRequired.properties)
+   locale/en-US/template.dtd                                (locale/en-US/template.dtd)
++% locale  templatesmanager   ru       %locale/ru/
++  locale/ru/templatesManagerOverlay.dtd                 (locale/ru/templatesManagerOverlay.dtd)
++  locale/ru/templatesManager.dtd                        (locale/ru/templatesManager.dtd)
++  locale/ru/templatesManager.properties                 (locale/ru/templatesManager.properties)
++  locale/ru/addonRequired.properties                    (locale/ru/addonRequired.properties)
++  locale/ru/template.dtd                                (locale/ru/template.dtd)
+diff -urN mozilla-2.0/bluegriffon/stubs/thumbnailer/install.rdf mozilla-2.0-patched/bluegriffon/stubs/thumbnailer/install.rdf
+--- mozilla-2.0/bluegriffon/stubs/thumbnailer/install.rdf	2013-06-19 12:12:29.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/thumbnailer/install.rdf	2013-08-08 19:14:42.000000000 +0400
+@@ -25,7 +25,8 @@
+     <em:file>
+       <Description about="thumbnailer.jar">
+         <em:package>content/</em:package>
+-        <em:locale>locale/en-US/</em:locale>
++	<em:locale>locale/en-US/</em:locale>
++        <em:locale>locale/ru/</em:locale>
+       </Description>
+     </em:file>
+ 
+diff -urN mozilla-2.0/bluegriffon/stubs/thumbnailer/jar.mn mozilla-2.0-patched/bluegriffon/stubs/thumbnailer/jar.mn
+--- mozilla-2.0/bluegriffon/stubs/thumbnailer/jar.mn	2011-05-12 14:15:54.000000000 +0400
++++ mozilla-2.0-patched/bluegriffon/stubs/thumbnailer/jar.mn	2013-08-08 19:14:14.000000000 +0400
+@@ -15,3 +15,6 @@
+ % locale  thumbnailer   en-US       %locale/en-US/
+   locale/en-US/thumbnailerOverlay.dtd             (locale/en-US/thumbnailerOverlay.dtd)
+   locale/en-US/thumbnailerOverlay.properties      (locale/en-US/thumbnailerOverlay.properties)
++% locale  thumbnailer   ru       %locale/ru/
++  locale/ru/thumbnailerOverlay.dtd             (locale/ru/thumbnailerOverlay.dtd)
++  locale/ru/thumbnailerOverlay.properties      (locale/ru/thumbnailerOverlay.properties)

@@ -10,28 +10,37 @@
 Summary:	The next-generation Web Editor
 Name:		bluegriffon
 Version:	1.7.2
-Release:	2
+Release:	5
 License:	MPLv1.1 or GPLv2+ or LGPLv2+
 Group:		Editors
 Url:		http://bluegriffon.org/
 Source0:	firefox-%{srcversion}.tar.bz2
 Source1:	%{name}-%{version}.tar.bz2
 Source2:	%{name}-l10n-%{version}.tar.bz2
+# russian files
+Source3:	russian.tar.bz2
 
 Source10:	%{name}.sh.in
 Source11:	%{name}.sh
 Source12:	%{name}.desktop
 
+# Russian patch
+Patch0:		bluegriffon-1.7.2-update-i18n.patch
+
 # build patches
-Patch0:		bluegriffon-build.patch
-Patch1:		mozilla-2.0-build-env.patch
-Patch2:		mozilla-2.0-no-sig-verify.patch
+Patch1:		bluegriffon-build.patch
+Patch2:		mozilla-2.0-build-env.patch
+Patch3:		mozilla-2.0-no-sig-verify.patch
 
 # upstream patches
 Patch10:	firefox-cairo_shared.patch
+Patch11:	firefox-gcc49.patch
 
 # custom default settings
 Patch30:	bluegriffon-1.7.2-updates.patch
+
+# op1 russian patch
+Patch31:	bluegriffon-1.7.2-op1-i18n.patch
 
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
@@ -87,6 +96,14 @@ Powered by Gecko, the rendering engine of Firefox 4, it's a modern
 and robust solution to edit Web pages in conformance to the latest
 Web Standards.
 
+%files
+%{_bindir}/%{name}
+%{_libdir}/%{name}
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/icons/hicolor/*/apps/%{name}.png
+
+#----------------------------------------------------------------------------
+
 %prep
 echo TARGET %{name}-%{version}-%{release}
 %setup -q -n %{tarballdir}
@@ -97,12 +114,15 @@ echo use Bundled GECKO
 %endif
 tar xjf %{SOURCE1}
 tar xjf %{SOURCE2} --directory %{name}
+tar xjf %{SOURCE3} --directory %{name}
 
-%patch0 -p0 -b .build
-%patch1 -p1
+%patch0 -p1
+%patch1 -p0 -b .build
 %patch2 -p1
+%patch3 -p1
 
 %patch10 -p1
+%patch11 -p1
 
 %patch30 -p1
 
@@ -175,6 +195,8 @@ export LIBDIR='%{_libdir}'
 
 MOZ_APP_DIR=%{_libdir}/%{name}
 
+%patch31 -p1
+
 export LDFLAGS="-Wl,-rpath,${MOZ_APP_DIR}"
 
 make -f client.mk build
@@ -218,13 +240,4 @@ cp bluegriffon/langpacks/*.xpi %{buildroot}%{_libdir}/%{name}/extensions/
 # Use the system hunspell dictionaries
 rm -rf %{buildroot}%{_libdir}/%{name}/dictionaries
 ln -s %{_datadir}/myspell %{buildroot}%{_libdir}/%{name}/dictionaries
-
-%files
-%{_bindir}/%{name}
-%{_libdir}/%{name}
-%{_datadir}/applications/%{name}.desktop
-%{_datadir}/icons/hicolor/16x16/apps/%{name}.png
-%{_datadir}/icons/hicolor/32x32/apps/%{name}.png
-%{_datadir}/icons/hicolor/48x48/apps/%{name}.png
-%{_datadir}/icons/hicolor/128x128/apps/%{name}.png
 
