@@ -10,7 +10,7 @@
 Summary:	The next-generation Web Editor
 Name:		bluegriffon
 Version:	1.7.2
-Release:	5
+Release:	6
 License:	MPLv1.1 or GPLv2+ or LGPLv2+
 Group:		Editors
 Url:		http://bluegriffon.org/
