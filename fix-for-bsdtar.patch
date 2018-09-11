@@ -1,0 +1,22 @@
+--- gecko-dev-042b84a/toolkit/mozapps/installer/upload-files.mk.old	2018-09-09 13:06:49.158092440 +0100
++++ gecko-dev-042b84a/toolkit/mozapps/installer/upload-files.mk	2018-09-09 13:07:30.171097551 +0100
+@@ -447,7 +447,7 @@
+ ifdef MOZ_OBJDIR
+   SRC_TAR_EXCLUDE_PATHS += --exclude='$(MOZ_OBJDIR)'
+ endif
+-CREATE_SOURCE_TAR = $(TAR) -c --owner=0 --group=0 --numeric-owner \
++CREATE_SOURCE_TAR = $(TAR) -c --uid=0 --gid=0 \
+   --mode=go-w $(SRC_TAR_EXCLUDE_PATHS) --transform='s,^\./,$(SRC_TAR_PREFIX)/,' -f
+ 
+ SOURCE_TAR = $(DIST)/$(PKG_SRCPACK_PATH)$(PKG_SRCPACK_BASENAME).tar.xz
+--- gecko-dev-042b84a/gfx/harfbuzz/Makefile.am.old	2018-09-09 14:24:29.010673182 +0100
++++ gecko-dev-042b84a/gfx/harfbuzz/Makefile.am	2018-09-09 14:24:54.715676385 +0100
+@@ -59,7 +59,7 @@
+ # TODO: Copy infrastructure from cairo
+ 
+ # TAR_OPTIONS is not set as env var for 'make dist'.  How to fix that?
+-TAR_OPTIONS = --owner=0 --group=0
++TAR_OPTIONS = --uid=0 --gid=0
+ 
+ dist-hook: dist-clear-sticky-bits
+ # Clean up any sticky bits we may inherit from parent dir

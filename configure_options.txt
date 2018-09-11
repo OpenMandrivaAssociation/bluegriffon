@@ -1,0 +1,322 @@
+ac_help=
+ac_default_prefix=/usr/local
+# Any additions from configure.in:
+
+###########################################################################################
+Branding
+###########################################################################################
+  --with-branding=dir     Use branding from the specified directory."
+
+  --with-distribution-id=ID
+                          Set distribution-specific id (default=org.mozilla)"
+
+  --enable-release        Build with more conservative, release engineering-oriented options.
+                          This may slow down builds."
+
+  --enable-official-branding
+                          Enable Official mozilla.org Branding
+                          Do not distribute builds with
+                          --enable-official-branding unless you have
+                          permission to use trademarks per
+                          http://www.mozilla.org/foundation/trademarks/ ."
+
+  --with-app-name=APPNAME sets MOZ_APP_NAME to APPNAME"
+
+  --with-app-basename=BASENAME sets MOZ_APP_BASENAME to BASENAME"
+
+  --with-debug-label=LABELS
+                          Define DEBUG_<value> for each comma-separated
+                          value given."
+
+  --disable-icf          Disable Identical Code Folding"
+
+
+
+########################################################################
+System Package Options
+########################################################################
+  --with-system-libevent[=PFX]
+                          Use system libevent [installed at prefix PFX]"
+
+  --with-system-nss       Use system installed NSS"
+
+  --with-nss-prefix=PFX   Prefix where NSS is installed"
+
+  --with-nss-exec-prefix=PFX
+                          Exec prefix where NSS is installed"
+
+  --with-system-jpeg[=PFX]
+                          Use system libjpeg [installed at prefix PFX]"
+
+  --with-system-zlib[=PFX]
+                          Use system libz [installed at prefix PFX]"
+
+  --with-system-bz2[=PFX]
+                          Use system libbz2 [installed at prefix PFX]"
+
+  --with-system-png[=PFX]
+                          Use system libpng [installed at prefix PFX]"
+
+  --enable-system-sqlite  Use system sqlite (located with pkgconfig)"
+
+ --enable-system-cairo   Use system cairo (located with pkgconfig)"
+
+ --enable-system-pixman Use system pixman (located with pkgconfig)"
+
+  --with-system-libvpx    Use system libvpx (located with pkgconfig)"
+
+  --with-system-icu
+                          Use system ICU (located with pkgconfig)"
+
+  --with-pthreads         Force use of system pthread library with NSPR "
+
+  --with-nspr-cflags=FLAGS
+                          Pass FLAGS to CC when building code that uses NSPR.
+                          Use this when there's no accurate nspr-config
+                          script available.  This is the case when building
+                          SpiderMonkey as part of the Mozilla tree: the
+                          top-level configure script computes NSPR flags
+                          that accomodate the quirks of that environment."
+
+  --with-nspr-libs=LIBS   Pass LIBS to LD when linking code that uses NSPR.
+                          See --with-nspr-cflags for more details."
+
+  --with-system-nspr      Use an NSPR that is already built and installed.
+                          Use the 'nspr-config' script in the current path,
+                          or look for the script in the directories given with
+                          --with-nspr-exec-prefix or --with-nspr-prefix.
+                          (Those flags are only checked if you specify
+                          --with-system-nspr.)"
+############################################################################
+
+############################################################################
+Enable Features
+############################################################################
+  --enable-cpp-rtti       Enable C++ RTTI "
+
+  --enable-gold           Enable GNU Gold Linker when it is not already the default"
+
+  --enable-address-sanitizer       Enable Address Sanitizer (default=no)"
+
+  --enable-memory-sanitizer       Enable Memory Sanitizer (default=no)"
+
+  --enable-thread-sanitizer       Enable Thread Sanitizer (default=no)"
+
+  --enable-llvm-hacks       Enable workarounds required for several LLVM instrumentations (default=no)"
+
+  --enable-valgrind       Enable Valgrind integration hooks (default=no)"
+  
+   --enable-pie           Enable Position Independent Executables"
+
+  --enable-dtrace         build with dtrace support if available (default=no)"
+
+  --enable-nspr-build     Build NSPR from source tree"
+
+  --enable-posix-nspr-emulation
+                          Enable emulation of NSPR for POSIX systems" 
+
+  --enable-startup-notification
+                          Enable startup-notification support (default: disabled) "
+
+  --enable-ui-locale=ab-CD
+                          Select the user interface locale (default: en-US)"
+
+  --enable-libproxy         Enable libproxy support "
+
+  --enable-hardware-aec-ns   Enable support for hardware AEC and noise suppression"
+
+  --enable-raw           Enable support for RAW media"
+
+  --enable-android-omx  Enable support for Android OMX media backend"
+
+  --enable-omx-plugin      Enable building OMX plugin (B2G)"
+
+  --enable-alsa          Enable Alsa support"
+  --enable-extensions     Enable extensions"
+
+  --enable-maintenance-service       Enable building of maintenanceservice"
+
+  --enable-bundled-fonts  Enable support for bundled fonts on desktop platforms"
+
+  --enable-verify-mar     Enable verifying MAR signatures"
+
+  --enable-signmar     Enable building the signmar program"
+
+  --enable-content-sandbox Enable sandboxing support for content-processes
+
+  --enable-url-classifier Enable url classifier module"
+
+  --enable-mobile-optimize
+                          Enable mobile optimizations"
+
+  --enable-optimize=[OPT] Specify compiler optimization flags [OPT=-O]"
+
+  --enable-logrefcnt      Enable logging of refcounts (default=debug) "
+
+  --enable-dump-painting          Enable paint debugging."
+
+  --enable-clang-plugin   Enable building with the mozilla clang plugin "
+
+  --enable-strip          Enable stripping of libs & executables "
+
+  --enable-install-strip  Enable stripping of libs & executables when packaging "
+
+  --enable-stdcxx-compat  Enable compatibility with older libstdc++"
+
+  --enable-debug-js-modules  Enable debug mode for frontend JS libraries"
+
+  --enable-tasktracer       Set compile flags necessary for using TaskTracer"
+
+  --enable-reflow-perf    Enable reflow performance tracing"
+
+  --enable-synth-pico  Set compile flags necessary for compiling Pico Web Speech API "
+
+  --with-crashreporter-enable-percent=NN
+                          Enable sending crash reports by default on NN% of users. (default=100)"
+
+############################################################################
+Disable Features
+############################################################################
+
+  --disable-pulseaudio          Disable PulseAudio support"
+
+  --disable-negotiateauth Disable GSS-API negotiation "
+
+  --disable-pref-extensions
+                          Disable pref extensions such as autoconfig"
+
+  --disable-system-extension-dirs
+                          Disable searching system- and account-global
+                          directories for extensions of any kind; use
+                          only profile-specific extension directories"
+
+  --disable-universalchardet
+                          Disable universal encoding detection"
+
+  --disable-crashreporter Disable breakpad crash reporting"
+
+  --disable-updater       Disable building of updater"
+
+  --disable-parental-controls
+                          Do not build parental controls"
+
+  --disable-sandbox        Disable sandboxing support"
+
+ --disable-libjpeg-turbo  Disable optimized jpeg decoding routines"
+
+  --disable-content-sandbox Disable sandboxing support for content-processes"
+
+  --disable-feeds         Disable feed handling and processing components"
+
+  --disable-zipwriter     Disable zipwriter component"
+
+  --disable-optimize      Disable compiler optimization
+
+  --disable-startupcache          Disable startup cache 
+
+  --disable-elf-hack      Disable elf hacks"
+
+  --disable-mozril-geoloc         Disable Mozilla's RIL and geolocation"
+
+  --disable-gconf      Disable Gconf support "
+
+  --disable-dbus          Disable dbus support "
+
+  --disable-accessibility Disable accessibility support"
+
+  --disable-webrtc        Disable support for WebRTC"
+
+  --disable-directshow  Disable support for DirectShow"
+
+  --disable-xul           Disable XUL"
+
+  --disable-necko-wifi    Disable necko wifi scanner"
+
+  --disable-cookies       Disable cookie support"
+
+
+###############################################################################################
+Platform Configuration
+###############################################################################################
+  --with-x                use the X Window System"
+  
+  --with-android-distribution-directory=dir
+                          Optional Firefox for Android partner distribution directory."
+
+  --with-android-sdk=DIR
+                          location where the Android SDK can be found (like ~/.mozbuild/android-sdk-linux)"
+
+  --with-android-min-sdk=[VER]     Impose a minimum Firefox for Android SDK version"
+
+  --with-android-max-sdk=[VER]     Impose a maximum Firefox for Android SDK version"
+
+  --with-macbundlename-prefix=prefix
+                          Prefix for MOZ_MACBUNDLE_NAME"
+
+  --with-float-abi=[[type|toolchain-default]]
+                           Use specific arm float ABI (-mfloat-abi=type)"
+
+  --with-soft-float[[=yes|no|toolchain-default]]
+                           Use soft float library (-msoft-float)"
+
+  --with-arch=[[type|toolchain-default]]
+                           Use specific CPU features (-march=type). Resets
+                           thumb, fpu, float-abi, etc. defaults when set"
+
+  --with-thumb[[=yes|no|toolchain-default]]
+                          Use Thumb instruction set (-mthumb)"
+
+  --with-thumb-interwork[[=yes|no|toolchain-default]]
+                           Use Thumb/ARM instuctions interwork (-mthumb-interwork)"
+
+  --with-fpu=[[type|toolchain-default]]
+                           Use specific FPU type (-mfpu=type)"
+
+  --jitreport-granularity=N
+                           Default granularity at which to report JIT code
+                           to external tools
+                             0 - no info
+                             1 - code ranges for whole functions only
+                             2 - per-line information
+                             3 - per-op information"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  --with-default-mozilla-five-home
+                          Set the default value for MOZILLA_FIVE_HOME"
+
+  --with-user-appdir=DIR  Set user-specific appdir (default=.mozilla)"
+
+  --with-doc-input-dirs=DIRS
+                          Header/idl dirs to create docs from"
+
+  --with-doc-include-dirs=DIRS
+                          Include dirs to preprocess doc headers"
+
+  --with-doc-output-dir=DIR
+                          Dir to generate docs into"
+
+ 
+
+
+
+
+
+
+  --with-intl-api, --with-intl-api=build, --without-intl-api
+    Determine the status of the ECMAScript Internationalization API.  The first
+    (or lack of any of these) builds and exposes the API.  The second builds it
+    but doesn't use ICU or expose the API to script.  The third doesn't build
+    ICU at all."

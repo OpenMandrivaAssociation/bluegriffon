@@ -1,0 +1,31 @@
+
+# HG changeset patch
+# User Mike Hommey <mh+mozilla@glandium.org>
+# Date 1514684206 -32400
+# Node ID 8e28a66b548b7db15a6053780c558539c4e6d05d
+# Parent  212586648332c932888ab2fa654332664c2d2abb
+Bug 1427455 - Remove unused variables from baseconfig.mk. r=froydnj
+
+Bug 1333826 removed their use.
+
+diff --git a/config/baseconfig.mk b/config/baseconfig.mk
+--- a/config/baseconfig.mk
++++ b/config/baseconfig.mk
+@@ -1,16 +1,13 @@
+ # This file is normally included by autoconf.mk, but it is also used
+ # directly in python/mozbuild/mozbuild/base.py for gmake validation.
+ # We thus use INCLUDED_AUTOCONF_MK to enable/disable some parts depending
+ # whether a normal build is happening or whether the check is running.
+-includedir := $(includedir)/$(MOZ_APP_NAME)-$(MOZ_APP_VERSION)
+-idldir = $(datadir)/idl/$(MOZ_APP_NAME)-$(MOZ_APP_VERSION)
+ installdir = $(libdir)/$(MOZ_APP_NAME)-$(MOZ_APP_VERSION)
+-sdkdir = $(libdir)/$(MOZ_APP_NAME)-devel-$(MOZ_APP_VERSION)
+ ifeq (.,$(DEPTH))
+ DIST = dist
+ else
+ DIST = $(DEPTH)/dist
+ endif
+ ABS_DIST = $(topobjdir)/dist
+ 
+ # We do magic with OBJ_SUFFIX in config.mk, the following ensures we don't
+

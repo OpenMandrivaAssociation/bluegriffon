@@ -1,0 +1,11 @@
+--- mozilla-2.0/configure.in~	2013-05-18 20:47:11.000000000 +0100
++++ mozilla-2.0/configure.in	2017-12-19 23:46:05.384967155 +0000
+@@ -3963,7 +3963,7 @@
+     _USE_SYSTEM_NSS=1 )
+ 
+ if test -n "$_USE_SYSTEM_NSS"; then
+-    AM_PATH_NSS(3.14.3, [MOZ_NATIVE_NSS=1], [AC_MSG_ERROR([you don't have NSS installed or your version is too old])])
++    AM_PATH_NSS(3.14, [MOZ_NATIVE_NSS=1], [AC_MSG_ERROR([you don't have NSS installed or your version is too old])])
+ fi
+ 
+ if test -n "$MOZ_NATIVE_NSS"; then

@@ -1,0 +1,49 @@
+
+# HG changeset patch
+# User Mike Hommey <mh+mozilla@glandium.org>
+# Date 1514708332 -32400
+# Node ID 8f74ddd39f610c992426a5e03158d89430788a31
+# Parent  2749e2212c24e9d309dd697b81e7126b5bd09ac8
+Bug 445128 - Stop putting the version number in the target directory for make install. r=nalexander
+
+Back when I filed this bug, $appname-$version was already useless, but
+there actually were multiple supported versions (e.g. 3.5/3.6). So it
+made sense to have e.g. firefox-3.5 and firefox-3.6, but not
+firefox-3.5.12 and firefox-3.5.13.
+
+Fast forward 10 years, and we change "major" versions every 6 to 8
+weeks, have multiple chemspills every other week, and installing to
+firefox-57.0, firefox-57.0.1, firefox-57.0.2, firefox-57.0.3 doesn't
+make any kind of sense. Even firefox-56, firefox-57 is pretty much
+useless.
+
+There /kind/ of was some usefulness to the version in the SDK
+directories, but those are gone.
+
+I'm pretty sure no downstream is actually using versioned directories
+anyways.
+
+At this point, it seems better to just use the application name, without
+the version. A case could be made about ESR, but that would be better
+handled with a separate application name (e.g. firefox-esr).
+
+diff --git a/config/baseconfig.mk b/config/baseconfig.mk
+--- a/config/baseconfig.mk
++++ b/config/baseconfig.mk
+@@ -1,13 +1,13 @@
+ # This file is normally included by autoconf.mk, but it is also used
+ # directly in python/mozbuild/mozbuild/base.py for gmake validation.
+ # We thus use INCLUDED_AUTOCONF_MK to enable/disable some parts depending
+ # whether a normal build is happening or whether the check is running.
+-installdir = $(libdir)/$(MOZ_APP_NAME)-$(MOZ_APP_VERSION)
++installdir = $(libdir)/$(MOZ_APP_NAME)
+ ifeq (.,$(DEPTH))
+ DIST = dist
+ else
+ DIST = $(DEPTH)/dist
+ endif
+ ABS_DIST = $(topobjdir)/dist
+ 
+ # We do magic with OBJ_SUFFIX in config.mk, the following ensures we don't
+
+

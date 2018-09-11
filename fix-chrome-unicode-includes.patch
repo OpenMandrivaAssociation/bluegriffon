@@ -1,0 +1,30 @@
+From 1ff36e86a3d71c88d90855fb197880b0879bfdc8 Mon Sep 17 00:00:00 2001
+From: Jungshik Shin <jshin@chromium.org>
+Date: Fri, 10 Mar 2017 11:45:22 -0800
+Subject: [PATCH] Fix 'INCLUDE WHAT YOU USE' violation
+
+UnicodeString and U_* are used without including any ICU headers. This
+used to work with ICU 58.x, but not any more with ICU 59-to-be.
+
+This change is necessary for upgrading Chrome's ICU to 59.x.
+( https://crbug.com/699469 )
+
+Will fix #72
+---
+ gfx/sfntly/cpp/src/sample/chromium/subsetter_impl.cc | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/gfx/sfntly/cpp/src/sample/chromium/subsetter_impl.cc b/gfx/sfntly/cpp/src/sample/chromium/subsetter_impl.cc
+index 4f0a3b00..490e78c6 100644
+--- a/gfx/sfntly/cpp/src/sample/chromium/subsetter_impl.cc
++++ b/gfx/sfntly/cpp/src/sample/chromium/subsetter_impl.cc
+@@ -23,6 +23,9 @@
+ #include <map>
+ #include <set>
+ 
++#include <unicode/unistr.h>
++#include <unicode/uversion.h>
++
+ #include "sfntly/table/bitmap/eblc_table.h"
+ #include "sfntly/table/bitmap/ebdt_table.h"
+ #include "sfntly/table/bitmap/index_sub_table.h"

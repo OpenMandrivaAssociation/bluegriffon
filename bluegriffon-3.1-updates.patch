@@ -1,0 +1,13 @@
+--- gecko-dev-042b84a/bluegriffon/app/profile/bluegriffon-prefs.js.orig	2018-09-06 15:53:12.270033382 +0100
++++ gecko-dev-042b84a/bluegriffon/app/profile/bluegriffon-prefs.js	2018-09-07 00:52:16.705064359 +0100
+@@ -141,8 +141,8 @@
+ pref("bluegriffon.ui.horizontal_toolbars.show", true);
+ 
+ // updates
+-pref("bluegriffon.updates.check.enabled", true);
+-pref("bluegriffon.updates.frequency", "launch");
++pref("bluegriffon.updates.check.enabled", false);
++pref("bluegriffon.updates.frequency", "manually");
+ 
+ pref("html5.enable", true);
+ pref("bluegriffon.defaults.doctype", "kHTML5");

@@ -1,5 +1,8 @@
-sources:
-  firefox-9db46ddfb517.tar.bz2: 15572f1e6ecb134dfda4024af796945ac55cd41d
+removed_sources:
   bluegriffon-1.7.2.tar.bz2: 47ec7626cccf0e15092c8b580716cf93567c49b3
+sources:
+  bluegriffon-3.1.tar.gz: 3bc2058191cf4b278eaedde55b98b94c6b7ad10a
   bluegriffon-l10n-1.7.2.tar.bz2: b801e8bca3fd6c0af06e8e2b70ede69306a8b685
+  firefox-9db46ddfb517.tar.bz2: 15572f1e6ecb134dfda4024af796945ac55cd41d
+  gecko-dev-042b84a.tar.gz: c989c7fad0b383812570203964bfa783fe6a4ed3
   russian.tar.bz2: 40bcd0d3a961ad00dd25983662d43146c1846dff
