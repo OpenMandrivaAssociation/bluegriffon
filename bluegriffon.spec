@@ -118,10 +118,10 @@ mkdir -p js/src/.deps
 
 # See http://bluegriffon.org/pages/Build-BlueGriffon
 cat <<EOF_MOZCONFIG > .mozconfig 
-#CC=gcc
-#CXX=g++
-CC=/usr/bin/clang
-CXX=/usr/bin/clang++
+CC=gcc
+CXX=g++
+#CC=/usr/bin/clang
+#CXX=/usr/bin/clang++
 
 mk_add_options PYTHON=/usr/bin/python2
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/opt
