@@ -1,6 +1,6 @@
 %define _enable_debug_packages %{nil}
 %define debug_package %{nil}
-
+%global __requires_exclude ^libxul.*$
 %global tarballdir  gecko-dev-042b84a
 
 %global gecko_version   2.0.1
