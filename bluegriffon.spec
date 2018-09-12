@@ -126,13 +126,13 @@ CC=gcc
 CXX=g++
 #CC=/usr/bin/clang
 #CXX=/usr/bin/clang++
+#ac_add_options --enable-clang-plugin
+#ac_add_options --enable-llvm-hacks
 
 mk_add_options PYTHON=/usr/bin/python2
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/opt
 mk_add_options MOZ_MAKE_FLAGS="-j16"
 ac_add_options --enable-release
-ac_add_options --enable-clang-plugin
-ac_add_options --enable-llvm-hacks
 ac_add_options --with-distribution-id="OpenMandriva-Lx"
 ac_add_options --enable-application=%{name}
 ac_add_options --with-system-png
