@@ -44,6 +44,7 @@ BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
 BuildRequires:	yasm
 BuildRequires:	rust
+BuildRequires:	cargo
 BuildRequires:	pkgconfig(gl)
 #BuildRequires:	wireless-tools
 BuildRequires:	zip
