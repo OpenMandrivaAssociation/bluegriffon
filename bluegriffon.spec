@@ -46,6 +46,7 @@ BuildRequires:	yasm
 BuildRequires:	rust
 BuildRequires:	cargo
 BuildRequires:	pkgconfig(libpulse)
+BuildRequires:	hunspell-devel
 BuildRequires:	pkgconfig(gl)
 #BuildRequires:	wireless-tools
 BuildRequires:	zip
