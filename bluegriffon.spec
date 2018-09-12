@@ -45,6 +45,7 @@ BuildRequires:	desktop-file-utils
 BuildRequires:	yasm
 BuildRequires:	rust
 BuildRequires:	cargo
+BuildRequires:	pkgconfig(libpulse)
 BuildRequires:	pkgconfig(gl)
 #BuildRequires:	wireless-tools
 BuildRequires:	zip
