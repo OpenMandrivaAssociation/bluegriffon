@@ -53,6 +53,7 @@ BuildRequires:	libiw-devel
 BuildRequires:	pkgconfig(freetype2)
 #BuildRequires:	pkgconfig(gnome-vfs-2.0)
 BuildRequires:	pkgconfig(gtk+-3.0)
+BuildRequires:  pkgconfig(gtk+-2.0)
 #BuildRequires:	pkgconfig(libgnomeui-2.0)
 BuildRequires:	pkgconfig(libIDL-2.0)
 BuildRequires:	pkgconfig(libstartup-notification-1.0)
