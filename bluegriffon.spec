@@ -43,7 +43,7 @@ Patch30:        bluegriffon-3.1-updates.patch
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
 BuildRequires:	yasm
-#BuildRequires:	pkgconfig(alsa)
+BuildRequires:	rust
 BuildRequires:	pkgconfig(gl)
 #BuildRequires:	wireless-tools
 BuildRequires:	zip
