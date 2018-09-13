@@ -81,6 +81,7 @@ Requires:	nss
 Requires:	nspr
 
 AutoProv:	no
+Autoreq:	0
 
 %description
 BlueGriffon is a new WYSIWYG content editor for the World Wide Web.
