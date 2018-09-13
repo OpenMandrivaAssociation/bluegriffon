@@ -1,6 +1,7 @@
 %define _enable_debug_packages %{nil}
 %define debug_package %{nil}
-%global __requires_exclude ^libxul.*$
+%define	__noautoreq	^libxul.so(.*)$
+#%global __requires_exclude ^libxul.*$
 %global tarballdir  gecko-dev-042b84a
 
 %global gecko_version   2.0.1
@@ -55,8 +56,8 @@ BuildRequires:	libiw-devel
 BuildRequires:	pkgconfig(freetype2)
 #BuildRequires:	pkgconfig(gnome-vfs-2.0)
 BuildRequires:	pkgconfig(gtk+-3.0)
-BuildRequires:  pkgconfig(gtk+-2.0)
-BuildRequires:	pkgconfig(gconf-2.0)
+#BuildRequires:  pkgconfig(gtk+-2.0)
+#BuildRequires:	pkgconfig(gconf-2.0)
 #BuildRequires:	pkgconfig(libgnomeui-2.0)
 BuildRequires:	pkgconfig(libIDL-2.0)
 BuildRequires:	pkgconfig(libstartup-notification-1.0)
@@ -81,7 +82,6 @@ Requires:	nss
 Requires:	nspr
 
 AutoProv:	no
-Autoreq:	0
 
 %description
 BlueGriffon is a new WYSIWYG content editor for the World Wide Web.
