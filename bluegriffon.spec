@@ -77,6 +77,7 @@ BuildRequires:	pkgconfig(nspr)
 BuildRequires:	pkgconfig(nss)
 BuildRequires:	pkgconfig(sqlite)
 BuildRequires:	pkgconfig(zlib)
+BuildRequires:  pkgconfig(dbus-glib-1)
 
 Requires:	nss
 Requires:	nspr
