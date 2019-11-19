@@ -70,7 +70,7 @@ BuildRequires:	jpeg-devel
 BuildRequires:	nss-static-devel
 #BuildRequires:	pkgconfig(cairo)
 BuildRequires:	pkgconfig(hunspell)
-BuildRequires:	pkgconfig(lcms)
+BuildRequires:	pkgconfig(lcms2)
 BuildRequires:	pkgconfig(libnotify)
 BuildRequires:	pkgconfig(libpng)
 BuildRequires:	pkgconfig(nspr)
@@ -79,6 +79,7 @@ BuildRequires:	pkgconfig(sqlite)
 BuildRequires:	pkgconfig(zlib)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(sqlite3)
+BuildRequires:  pkgconfig(python2)
 
 Requires:	nss
 Requires:	nspr
