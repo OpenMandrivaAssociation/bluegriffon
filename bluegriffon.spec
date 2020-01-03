@@ -1,12 +1,10 @@
+#%%define _disable_lto 1
 %define _enable_debug_packages %{nil}
 %define debug_package %{nil}
-%define	__noautoreq	^libxul.so(.*)$
-#%global __requires_exclude ^libxul.*$
+%define	__requires_exclude ^libxul.so(.*)$
 %global tarballdir  gecko-dev-042b84a
-
 %global gecko_version   2.0.1
 %global srcversion      042b84a
-
 Summary:	The next-generation Web Editor
 Name:		bluegriffon
 Version:	3.1
@@ -26,8 +24,23 @@ Source12:	%{name}.desktop
 Patch0:		fix-wformat-flag.patch
 Patch1:		fix-link-flag-passing.patch
 Patch2:		fix-for-bsdtar.patch
-#Patch3:		fix-nss-version.patch
-#Patch4:		firefox-gcc49.patch
+
+Patch3:		rust-bindings-fix.patch
+Patch4:		fix-duplicate-declaration.patch
+Patch5:		fix-gettid-definition.patch
+Patch6:     	add-missing-files.patch
+#Patch7:	    update-build-dir-for-clang.patch May get this to apply eventually
+
+#Patch6:	0001-Bug-1501821-Update-clang-plugin-in-order-to-make-it-.patch
+#Patch7:	0001-Bug-1511889-Update-clang-plugin-LoadLibraryUsageChec.patch
+Patch80:	fix-explicit-syntax.patch
+#Patch90:	mozbuild.patch
+#Patch60:	add-generated-txt-file.patch
+
+Patch8:		fix-clang-api-change.patch
+#Patch90:	fix-gcc-compiler-error-a.patch
+#Patch30:	fix-nss-version.patch
+#Patch40:	firefox-gcc49.patch
 
 # upstream patches
 Patch10:	improve-resiliance-of-SystemResourceMonitor.stop.patch
@@ -38,8 +51,6 @@ Patch13:	fix-chrome-unicode-includes.patch
 # custom default settings
 Patch30:        bluegriffon-3.1-updates.patch
 
-# op1 russian patch
-#Patch31:        bluegriffon-1.7.2-op1-i18n.patch
 
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
@@ -49,26 +60,21 @@ BuildRequires:	cargo
 BuildRequires:	pkgconfig(libpulse)
 BuildRequires:	hunspell-devel
 BuildRequires:	pkgconfig(gl)
-#BuildRequires:	wireless-tools
 BuildRequires:	zip
 BuildRequires:	krb5-devel
 BuildRequires:	libiw-devel
 BuildRequires:	pkgconfig(freetype2)
-#BuildRequires:	pkgconfig(gnome-vfs-2.0)
 BuildRequires:	pkgconfig(gtk+-3.0)
 BuildRequires:  pkgconfig(gtk+-2.0)
 BuildRequires:	pkgconfig(gconf-2.0)
-#BuildRequires:	pkgconfig(libgnomeui-2.0)
 BuildRequires:	pkgconfig(libIDL-2.0)
 BuildRequires:	pkgconfig(libstartup-notification-1.0)
-#BuildRequires:	pkgconfig(pango)
 BuildRequires:	pkgconfig(xrender)
 BuildRequires:	pkgconfig(xt)
 
 BuildRequires:	bzip2-devel
 BuildRequires:	jpeg-devel
 BuildRequires:	nss-static-devel
-#BuildRequires:	pkgconfig(cairo)
 BuildRequires:	pkgconfig(hunspell)
 BuildRequires:	pkgconfig(lcms2)
 BuildRequires:	pkgconfig(libnotify)
@@ -110,11 +116,18 @@ tar xjf %{SOURCE1} --strip-components=1 --directory %{name}
 
 patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_content.patch
 patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
+%patch80 -p1
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
-#%%patch5 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+#%%patch7 -p1
+#%%patch8 -p1
 
+#%%patch9 -p1
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
@@ -124,19 +137,21 @@ patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
 
 # Otherwise build fails because it expects this dir to exist
 mkdir -p js/src/.deps
-
+#chmod +x %{_builddir}/build/clang-plugin/ThirdPartyPaths.py
 # See http://bluegriffon.org/pages/Build-BlueGriffon
 cat <<EOF_MOZCONFIG > .mozconfig 
-CC=gcc
-CXX=g++
-#CC=/usr/bin/clang
-#CXX=/usr/bin/clang++
+#CC=gcc
+#LD=/usr/bin/ld.bfd
+#CXX=g++
+
+CC=/usr/bin/clang
+CXX=/usr/bin/clang++
 #ac_add_options --enable-clang-plugin
-#ac_add_options --enable-llvm-hacks
+ac_add_options --enable-llvm-hacks
 
 mk_add_options PYTHON=/usr/bin/python2
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/opt
-mk_add_options MOZ_MAKE_FLAGS="-j16"
+mk_add_options MOZ_MAKE_FLAGS="-j8"
 ac_add_options --enable-release
 ac_add_options --with-distribution-id="OpenMandriva-Lx"
 ac_add_options --enable-application=%{name}
@@ -167,7 +182,7 @@ EOF_MOZCONFIG
 
 
 %build
-MOZ_OPT_FLAGS=$(echo %{optflags} | sed -e 's/-Wall//' -e 's/-fexceptions/-fno-exceptions/g' -e 's/-gdwarf-4//')
+MOZ_OPT_FLAGS=$(echo %{optflags} | sed -e 's/-Wall//' -e 's/-fexceptions/-fno-exceptions/g' -e 's/-Werror=format-security//' -e 's/-gdwarf-4//')
 export CFLAGS=$MOZ_OPT_FLAGS
 export CXXFLAGS=$MOZ_OPT_FLAGS
 
