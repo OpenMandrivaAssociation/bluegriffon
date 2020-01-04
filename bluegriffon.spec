@@ -21,36 +21,31 @@ Source12:	%{name}.desktop
 
 
 # build patches
-Patch0:		fix-wformat-flag.patch
-Patch1:		fix-link-flag-passing.patch
-Patch2:		fix-for-bsdtar.patch
-
-Patch3:		rust-bindings-fix.patch
-Patch4:		fix-duplicate-declaration.patch
-Patch5:		fix-gettid-definition.patch
-Patch6:     	add-missing-files.patch
-#Patch7:	    update-build-dir-for-clang.patch May get this to apply eventually
-
-#Patch6:	0001-Bug-1501821-Update-clang-plugin-in-order-to-make-it-.patch
-#Patch7:	0001-Bug-1511889-Update-clang-plugin-LoadLibraryUsageChec.patch
-Patch80:	fix-explicit-syntax.patch
-#Patch90:	mozbuild.patch
-#Patch60:	add-generated-txt-file.patch
-
-Patch8:		fix-clang-api-change.patch
-#Patch90:	fix-gcc-compiler-error-a.patch
-#Patch30:	fix-nss-version.patch
-#Patch40:	firefox-gcc49.patch
+Patch0:         fix-wformat-flag.patch
+Patch1:         fix-link-flag-passing.patch
+Patch2:         fix-for-bsdtar.patch
+Patch3:         rust-bindings-fix.patch
+Patch4:         fix-duplicate-declaration.patch
+Patch5:         fix-gettid-definition.patch
+Patch6:         add-missing-files.patch
+Patch7:         fix-gcc-compiler-error-a.patch
+Patch8:         fix-explicit-syntax.patch
 
 # upstream patches
-Patch10:	improve-resiliance-of-SystemResourceMonitor.stop.patch
-Patch11:	remove-unused-variables-from-baseconfig.mk.patch
-Patch12:	remove-version-number-from-install-dir.patch
-Patch13:	fix-chrome-unicode-includes.patch
-
+Patch10:        improve-resiliance-of-SystemResourceMonitor.stop.patch
+Patch11:        remove-unused-variables-from-baseconfig.mk.patch
+Patch12:        remove-version-number-from-install-dir.patch
+Patch13:        fix-chrome-unicode-includes.patch
 # custom default settings
-Patch30:        bluegriffon-3.1-updates.patch
+Patch14:        bluegriffon-3.1-updates.patch
 
+# clang-plugin patches
+Patch100:       mozbuild.patch
+Patch101:       add-generated-txt-file.patch
+Patch102:       fix-clang-api-change.patch
+
+#Patch30:       fix-nss-version.patch
+#Patch40:       firefox-gcc49.patch
 
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
@@ -116,7 +111,6 @@ tar xjf %{SOURCE1} --strip-components=1 --directory %{name}
 
 patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_content.patch
 patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
-%patch80 -p1
 %patch0 -p1
 %patch1 -p1
 %patch2 -p1
@@ -124,16 +118,18 @@ patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch8 -p1
 #%%patch7 -p1
-#%%patch8 -p1
-
-#%%patch9 -p1
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
 %patch13 -p1
+%patch14 -p1
 
-%patch30 -p1
+# clang-plugin patches
+%patch100 -p1
+#%%patch101 -p1
+#%%patch102 -p1
 
 # Otherwise build fails because it expects this dir to exist
 mkdir -p js/src/.deps
