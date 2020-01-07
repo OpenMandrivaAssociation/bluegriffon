@@ -1,0 +1,24 @@
+diff --git a/tools/profiler/core/platform.h b/tools/profiler/core/platform.h
+index 2e4acaa..ad5388e 100644
+--- a/tools/profiler/core/platform.h
++++ b/tools/profiler/core/platform.h
+@@ -48,17 +48,11 @@
+ #if defined(__GLIBC__)
+ #include <unistd.h>
+ #include <sys/syscall.h>
+-static inline pid_t gettid()
+-{
+-  return (pid_t) syscall(SYS_gettid);
+-}
++#define gettid() static_cast<pid_t>(syscall(SYS_gettid))
+ #elif defined(GP_OS_darwin)
+ #include <unistd.h>
+ #include <sys/syscall.h>
+-static inline pid_t gettid()
+-{
+-  return (pid_t) syscall(SYS_thread_selfid);
+-}
++#define gettid() static_cast<pid_t>(syscall(SYS_gettid))
+ #elif defined(GP_OS_android)
+ #include <unistd.h>
+ #elif defined(GP_OS_windows)
