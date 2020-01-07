@@ -84,6 +84,7 @@ BuildRequires:  pkgconfig(python2)
 
 Requires:	nss
 Requires:	nspr
+Requires:	hunspell
 
 AutoProv:	no
 
