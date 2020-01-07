@@ -1,0 +1,19 @@
+diff --git a/js/src/jsfriendapi.h b/js/src/jsfriendapi.h
+index 0a59326..27c3071 100644
+--- a/js/src/jsfriendapi.h
++++ b/js/src/jsfriendapi.h
+@@ -2004,14 +2004,6 @@ JS_ArrayBufferHasData(JSObject* obj);
+ extern JS_FRIEND_API(uint8_t*)
+ JS_GetArrayBufferData(JSObject* obj, bool* isSharedMemory, const JS::AutoCheckCannotGC&);
+ 
+-/**
+- * Check whether the obj is ArrayBufferObject and memory mapped. Note that this
+- * may return false if a security wrapper is encountered that denies the
+- * unwrapping.
+- */
+-extern JS_FRIEND_API(bool)
+-JS_IsMappedArrayBufferObject(JSObject* obj);
+-
+ /**
+  * Return the number of elements in a typed array.
+  *

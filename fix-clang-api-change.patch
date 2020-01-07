@@ -1,0 +1,257 @@
+diff --git a/build/clang-plugin/ArithmeticArgChecker.cpp b/build/clang-plugin/ArithmeticArgChecker.cpp
+index 12c61a7..2ad37a1 100644
+--- a/build/clang-plugin/ArithmeticArgChecker.cpp
++++ b/build/clang-plugin/ArithmeticArgChecker.cpp
+@@ -50,9 +50,9 @@ void ArithmeticArgChecker::check(
+   const char* Error = "cannot pass an arithmetic expression of built-in types to %0";
+   const Expr *Expression = Result.Nodes.getNodeAs<Expr>("node");
+   if (const CallExpr *Call = Result.Nodes.getNodeAs<CallExpr>("call")) {
+-    diag(Expression->getLocStart(), Error, DiagnosticIDs::Error) << Call->getDirectCallee();
++    diag(Expression->getBeginLoc(), Error, DiagnosticIDs::Error) << Call->getDirectCallee();
+   } else if (const CXXConstructExpr *Ctr =
+                  Result.Nodes.getNodeAs<CXXConstructExpr>("call")) {
+-    diag(Expression->getLocStart(), Error, DiagnosticIDs::Error) << Ctr->getConstructor();
++    diag(Expression->getBeginLoc(), Error, DiagnosticIDs::Error) << Ctr->getConstructor();
+   }
+ }
+diff --git a/build/clang-plugin/AssertAssignmentChecker.cpp b/build/clang-plugin/AssertAssignmentChecker.cpp
+index 4f76d48..553bc19 100644
+--- a/build/clang-plugin/AssertAssignmentChecker.cpp
++++ b/build/clang-plugin/AssertAssignmentChecker.cpp
+@@ -16,7 +16,7 @@ void AssertAssignmentChecker::check(
+   const CallExpr *FuncCall = Result.Nodes.getNodeAs<CallExpr>("funcCall");
+ 
+   if (FuncCall && hasSideEffectAssignment(FuncCall)) {
+-    diag(FuncCall->getLocStart(),
++    diag(FuncCall->getBeginLoc(),
+          "Forbidden assignment in assert expression",
+          DiagnosticIDs::Error);
+   }
+diff --git a/build/clang-plugin/KungFuDeathGripChecker.cpp b/build/clang-plugin/KungFuDeathGripChecker.cpp
+index f6271b0..d882da4 100644
+--- a/build/clang-plugin/KungFuDeathGripChecker.cpp
++++ b/build/clang-plugin/KungFuDeathGripChecker.cpp
+@@ -93,6 +93,6 @@ void KungFuDeathGripChecker::check(
+   }
+ 
+   // We cannot provide the note if we don't have an initializer
+-  diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D->getType() << ErrThing;
+-  diag(E->getLocStart(), Note, DiagnosticIDs::Note) << NoteThing << getNameChecked(D);
++  diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << D->getType() << ErrThing;
++  diag(E->getBeginLoc(), Note, DiagnosticIDs::Note) << NoteThing << getNameChecked(D);
+ }
+diff --git a/build/clang-plugin/MustReturnFromCallerChecker.cpp b/build/clang-plugin/MustReturnFromCallerChecker.cpp
+index d43204a..b405046 100644
+--- a/build/clang-plugin/MustReturnFromCallerChecker.cpp
++++ b/build/clang-plugin/MustReturnFromCallerChecker.cpp
+@@ -46,7 +46,7 @@ void MustReturnFromCallerChecker::check(
+   assert(Block && "This statement should be within the CFG!");
+ 
+   if (!immediatelyReturns(Block, Result.Context, CallIndex + 1)) {
+-    diag(Call->getLocStart(),
++    diag(Call->getBeginLoc(),
+          "You must immediately return after calling this function",
+          DiagnosticIDs::Error);
+   }
+diff --git a/build/clang-plugin/MustUseChecker.cpp b/build/clang-plugin/MustUseChecker.cpp
+index 58f7712..404ebce 100644
+--- a/build/clang-plugin/MustUseChecker.cpp
++++ b/build/clang-plugin/MustUseChecker.cpp
+@@ -55,9 +55,9 @@ void MustUseChecker::handleUnusedExprResult(const Stmt *Statement) {
+     E = E->IgnoreImplicit(); // Ignore ExprWithCleanup etc. implicit wrappers
+     QualType T = E->getType();
+     if (MustUse.hasEffectiveAnnotation(T) && !isIgnoredExprForMustUse(E)) {
+-      diag(E->getLocStart(), "Unused value of must-use type %0",
++      diag(E->getBeginLoc(), "Unused value of must-use type %0",
+            DiagnosticIDs::Error) << T;
+-      MustUse.dumpAnnotationReason(*this, T, E->getLocStart());
++      MustUse.dumpAnnotationReason(*this, T, E->getBeginLoc());
+     }
+   }
+ }
+diff --git a/build/clang-plugin/NaNExprChecker.cpp b/build/clang-plugin/NaNExprChecker.cpp
+index 860dc85..ae9702c 100644
+--- a/build/clang-plugin/NaNExprChecker.cpp
++++ b/build/clang-plugin/NaNExprChecker.cpp
+@@ -47,10 +47,10 @@ void NaNExprChecker::check(
+       std::distance(LHSExpr->child_begin(), LHSExpr->child_end()) == 1 &&
+       std::distance(RHSExpr->child_begin(), RHSExpr->child_end()) == 1 &&
+       *LHSExpr->child_begin() == LHS && *RHSExpr->child_begin() == RHS) {
+-    diag(Expression->getLocStart(), "comparing a floating point value to itself for "
++    diag(Expression->getBeginLoc(), "comparing a floating point value to itself for "
+                                     "NaN checking can lead to incorrect results",
+          DiagnosticIDs::Error);
+-    diag(Expression->getLocStart(), "consider using mozilla::IsNaN instead",
++    diag(Expression->getBeginLoc(), "consider using mozilla::IsNaN instead",
+          DiagnosticIDs::Note);
+   }
+ }
+diff --git a/build/clang-plugin/NeedsNoVTableTypeChecker.cpp b/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
+index e9c9090..84aa6ba 100644
+--- a/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
++++ b/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
+@@ -30,7 +30,7 @@ void NeedsNoVTableTypeChecker::check(
+     }
+   }
+ 
+-  diag(Specialization->getLocStart(),
++  diag(Specialization->getBeginLoc(),
+        "%0 cannot be instantiated because %1 has a VTable",
+        DiagnosticIDs::Error) << Specialization
+                              << Offender;
+diff --git a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
+index e37d6d7..628d167 100644
+--- a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
++++ b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
+@@ -21,7 +21,7 @@ void NoAddRefReleaseOnReturnChecker::check(
+   if (auto *Call = dyn_cast<CallExpr>(Base)) {
+     if (auto *Callee = Call->getDirectCallee()) {
+       if (hasCustomAnnotation(Callee, "moz_no_addref_release_on_return")) {
+-        diag(Call->getLocStart(),
++        diag(Call->getBeginLoc(),
+              "%1 cannot be called on the return value of %0",
+              DiagnosticIDs::Error)
+           << Callee
+diff --git a/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp b/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
+index 157f04c..5e8f035 100644
+--- a/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
++++ b/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
+@@ -41,10 +41,10 @@ void NoDuplicateRefCntMemberChecker::check(
+         const char* Note2 =
+             "Consider using the _INHERITED macros for AddRef and Release here";
+ 
+-        diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D;
+-        diag(BaseRefCntMember->getLocStart(), Note1, DiagnosticIDs::Note)
++        diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << D;
++        diag(BaseRefCntMember->getBeginLoc(), Note1, DiagnosticIDs::Note)
+           << BaseRefCntMember->getParent();
+-        diag(RefCntMember->getLocStart(), Note2, DiagnosticIDs::Note);
++        diag(RefCntMember->getBeginLoc(), Note2, DiagnosticIDs::Note);
+       }
+ 
+       if (FoundRefCntBase) {
+@@ -54,10 +54,10 @@ void NoDuplicateRefCntMemberChecker::check(
+             "Superclass %0 has an mRefCnt member";
+ 
+         // superclass has mRefCnt, and another superclass also has an mRefCnt
+-        diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D;
+-        diag(BaseRefCntMember->getLocStart(), Note, DiagnosticIDs::Note)
++        diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << D;
++        diag(BaseRefCntMember->getBeginLoc(), Note, DiagnosticIDs::Note)
+           << BaseRefCntMember->getParent();
+-        diag(FoundRefCntBase->getLocStart(), Note, DiagnosticIDs::Note)
++        diag(FoundRefCntBase->getBeginLoc(), Note, DiagnosticIDs::Note)
+           << FoundRefCntBase->getParent();
+       }
+ 
+diff --git a/build/clang-plugin/RefCountedInsideLambdaChecker.cpp b/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
+index 82ff54e..2980c20 100644
+--- a/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
++++ b/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
+@@ -141,7 +141,7 @@ void RefCountedInsideLambdaChecker::check(
+ bool RefCountedInsideLambdaChecker::ThisVisitor::VisitCXXThisExpr(CXXThisExpr *This) {
+   QualType Pointee = This->getType()->getPointeeType();
+   if (!Pointee.isNull() && isClassRefCounted(Pointee)) {
+-    Checker.emitDiagnostics(This->getLocStart(), "this", Pointee);
++    Checker.emitDiagnostics(This->getBeginLoc(), "this", Pointee);
+     return false;
+   }
+ 
+diff --git a/build/clang-plugin/ScopeChecker.cpp b/build/clang-plugin/ScopeChecker.cpp
+index 252cfd6..622bc56 100644
+--- a/build/clang-plugin/ScopeChecker.cpp
++++ b/build/clang-plugin/ScopeChecker.cpp
+@@ -65,7 +65,7 @@ void ScopeChecker::check(
+       Variety = AV_Automatic;
+     }
+     T = D->getType();
+-    Loc = D->getLocStart();
++    Loc = D->getBeginLoc();
+   } else if (const CXXNewExpr *E = Result.Nodes.getNodeAs<CXXNewExpr>("node")) {
+     // New allocates things on the heap.
+     // We don't consider placement new to do anything, as it doesn't actually
+@@ -73,7 +73,7 @@ void ScopeChecker::check(
+     if (!isPlacementNew(E)) {
+       Variety = AV_Heap;
+       T = E->getAllocatedType();
+-      Loc = E->getLocStart();
++      Loc = E->getBeginLoc();
+     }
+   } else if (const MaterializeTemporaryExpr *E =
+                  Result.Nodes.getNodeAs<MaterializeTemporaryExpr>("node")) {
+@@ -108,14 +108,14 @@ void ScopeChecker::check(
+       break;
+     }
+     T = E->getType().getUnqualifiedType();
+-    Loc = E->getLocStart();
++    Loc = E->getBeginLoc();
+   } else if (const CallExpr *E = Result.Nodes.getNodeAs<CallExpr>("node")) {
+     T = E->getType()->getPointeeType();
+     if (!T.isNull()) {
+       // This will always allocate on the heap, as the heapAllocator() check
+       // was made in the matcher
+       Variety = AV_Heap;
+-      Loc = E->getLocStart();
++      Loc = E->getBeginLoc();
+     }
+   }
+ 
+diff --git a/build/clang-plugin/SprintfLiteralChecker.cpp b/build/clang-plugin/SprintfLiteralChecker.cpp
+index dc627fa..387afba 100644
+--- a/build/clang-plugin/SprintfLiteralChecker.cpp
++++ b/build/clang-plugin/SprintfLiteralChecker.cpp
+@@ -50,8 +50,8 @@ void SprintfLiteralChecker::check(
+       return;
+     }
+ 
+-    diag(D->getLocStart(), Error, DiagnosticIDs::Error) << Name << Replacement;
+-    diag(D->getLocStart(), Note, DiagnosticIDs::Note) << Name;
++    diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << Name << Replacement;
++    diag(D->getBeginLoc(), Note, DiagnosticIDs::Note) << Name;
+     return;
+   }
+ 
+@@ -70,8 +70,8 @@ void SprintfLiteralChecker::check(
+     uint64_t Size = Type->getSize().getZExtValue();
+     uint64_t Lit = Literal->getValue().getZExtValue();
+     if (Size <= Lit) {
+-      diag(D->getLocStart(), Error, DiagnosticIDs::Error) << Name << Replacement;
+-      diag(D->getLocStart(), Note, DiagnosticIDs::Note) << Name;
++      diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << Name << Replacement;
++      diag(D->getBeginLoc(), Note, DiagnosticIDs::Note) << Name;
+     }
+   }
+ }
+diff --git a/build/clang-plugin/TrivialCtorDtorChecker.cpp b/build/clang-plugin/TrivialCtorDtorChecker.cpp
+index 37c9104..66f2f46 100644
+--- a/build/clang-plugin/TrivialCtorDtorChecker.cpp
++++ b/build/clang-plugin/TrivialCtorDtorChecker.cpp
+@@ -27,5 +27,5 @@ void TrivialCtorDtorChecker::check(
+                    Node->hasTrivialDefaultConstructor());
+   bool BadDtor = !Node->hasTrivialDestructor();
+   if (BadCtor || BadDtor)
+-    diag(Node->getLocStart(), Error, DiagnosticIDs::Error) << Node;
++    diag(Node->getBeginLoc(), Error, DiagnosticIDs::Error) << Node;
+ }
+diff --git a/build/clang-plugin/Utils.h b/build/clang-plugin/Utils.h
+index ea7a1af..6b9bce8 100644
+--- a/build/clang-plugin/Utils.h
++++ b/build/clang-plugin/Utils.h
+@@ -35,7 +35,7 @@ inline bool hasSideEffectAssignment(const Expr *Expression) {
+ 
+ template <class T> inline bool ASTIsInSystemHeader(const ASTContext &AC, const T &D) {
+   auto &SourceManager = AC.getSourceManager();
+-  auto ExpansionLoc = SourceManager.getExpansionLoc(D.getLocStart());
++  auto ExpansionLoc = SourceManager.getExpansionLoc(D.getBeginLoc());
+   if (ExpansionLoc.isInvalid()) {
+     return false;
+   }
+@@ -227,7 +227,7 @@ inline bool isIgnoredPathForImplicitConversion(const Decl *Declaration) {
+ }
+ 
+ inline bool isIgnoredPathForSprintfLiteral(const CallExpr *Call, const SourceManager &SM) {
+-  SourceLocation Loc = Call->getLocStart();
++  SourceLocation Loc = Call->getBeginLoc();
+   SmallString<1024> FileName = SM.getFilename(Loc);
+   llvm::sys::fs::make_absolute(FileName);
+   llvm::sys::path::reverse_iterator Begin = llvm::sys::path::rbegin(FileName),

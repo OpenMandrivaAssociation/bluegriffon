@@ -1,0 +1,6 @@
+here's a few general notes for anyone else trying to build this app.
+
+    1. 	Don't bother to enable lto. It used to work for gcc but post gcc-7.3 it no longer works due to an internal complier error. A bug has been filed upstream.
+    2. 	If you want to build with the clang compiler do not enable the clang-plugin or lto as currently it won't build with either enabled. See below about the clang plugin.
+    3.	There are some patches which help the build of the clang plugin however although it compiles it fails on linking with a missing symbol. 
+	The patches in the 10,20,30 etc series are those that need to be applied to build the plugin.

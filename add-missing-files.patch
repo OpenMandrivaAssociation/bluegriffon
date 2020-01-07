@@ -1,0 +1,2113 @@
+commit bf3fc4d1b80075e9c152abd82490ea5e8f868350
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 10:37:21 2019 +0000
+
+    Add missing files
+
+diff --git a/build/clang-plugin/CustomAttributes.cpp b/build/clang-plugin/CustomAttributes.cpp
+new file mode 100644
+index 000000000..5bff3c86a
+--- /dev/null
++++ b/build/clang-plugin/CustomAttributes.cpp
+@@ -0,0 +1,122 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include <algorithm>
++#include "CustomAttributes.h"
++#include "plugin.h"
++#include "clang/Frontend/FrontendPluginRegistry.h"
++
++/* Having annotations in the AST unexpectedly impacts codegen.
++ * Ideally, we'd avoid having annotations at all, by using an API such as
++ * the one from https://reviews.llvm.org/D31338, and storing the attributes
++ * data separately from the AST on our own. Unfortunately, there is no such
++ * API currently in clang, so we must do without.
++ * We can do something similar, though, where we go through the AST before
++ * running the checks, create a mapping of AST nodes to attributes, and
++ * remove the attributes/annotations from the AST nodes.
++ * Not all declarations can be reached from the decl() AST matcher, though,
++ * so we do our best effort (getting the other declarations we look at in
++ * checks). We emit a warning when checks look at a note that still has
++ * annotations attached (aka, hasn't been seen during our first pass),
++ * so that those don't go unnoticed. (-Werror should then take care of
++ * making that an error)
++ */
++
++using namespace clang;
++using namespace llvm;
++
++static DenseMap<const Decl*, CustomAttributesSet> AttributesCache;
++
++static CustomAttributesSet CacheAttributes(const Decl* D)
++{
++  CustomAttributesSet attrs = {};
++  for (auto Attr : D->specific_attrs<AnnotateAttr>()) {
++    auto annotation = Attr->getAnnotation();
++#define ATTR(a) \
++    if (annotation == #a) { \
++      attrs.has_ ## a = true; \
++    } else
++#include "CustomAttributes.inc"
++#undef ATTR
++    {}
++  }
++  const_cast<Decl*>(D)->dropAttr<AnnotateAttr>();
++  AttributesCache.insert(std::make_pair(D, attrs));
++  return attrs;
++}
++
++static void Report(const Decl* D, const char* message)
++{
++  ASTContext& Context = D->getASTContext();
++  DiagnosticsEngine& Diag = Context.getDiagnostics();
++  unsigned ID = Diag.getDiagnosticIDs()->getCustomDiagID(
++    DiagnosticIDs::Warning, message);
++  Diag.Report(D->getBeginLoc(), ID);
++}
++
++CustomAttributesSet GetAttributes(const Decl* D)
++{
++  CustomAttributesSet attrs = {};
++  if (D->hasAttr<AnnotateAttr>()) {
++    Report(D, "Declaration has unhandled annotations.");
++    attrs = CacheAttributes(D);
++  } else {
++    auto attributes = AttributesCache.find(D);
++    if (attributes != AttributesCache.end()) {
++      attrs = attributes->second;
++    }
++  }
++  return attrs;
++}
++
++bool hasCustomAttribute(const clang::Decl* D, CustomAttributes A)
++{
++  CustomAttributesSet attrs = GetAttributes(D);
++  switch (A) {
++#define ATTR(a) case a: return attrs.has_ ## a;
++#include "CustomAttributes.inc"
++#undef ATTR
++  }
++  return false;
++}
++
++class CustomAttributesMatcher : public ast_matchers::MatchFinder::MatchCallback {
++public:
++  virtual void
++  run(const ast_matchers::MatchFinder::MatchResult &Result) final
++  {
++    if (auto D = Result.Nodes.getNodeAs<Decl>("decl")) {
++      CacheAttributes(D);
++    } else if (auto L = Result.Nodes.getNodeAs<LambdaExpr>("lambda")) {
++      CacheAttributes(L->getCallOperator());
++      CacheAttributes(L->getLambdaClass());
++    }
++  }
++};
++
++class CustomAttributesAction : public PluginASTAction {
++public:
++  ASTConsumerPtr CreateASTConsumer(CompilerInstance &CI,
++                                   StringRef FileName) override {
++    auto& Context = CI.getASTContext();
++    auto AstMatcher = new (Context.Allocate<MatchFinder>()) MatchFinder();
++    auto Matcher = new (Context.Allocate<CustomAttributesMatcher>()) CustomAttributesMatcher();
++    AstMatcher->addMatcher(decl().bind("decl"), Matcher);
++    AstMatcher->addMatcher(lambdaExpr().bind("lambda"), Matcher);
++    return AstMatcher->newASTConsumer();
++  }
++
++  bool ParseArgs(const CompilerInstance &CI,
++                 const std::vector<std::string> &Args) override {
++    return true;
++  }
++
++  ActionType getActionType() override {
++    return AddBeforeMainAction;
++  }
++};
++
++static FrontendPluginRegistry::Add<CustomAttributesAction> X(
++  "moz-custom-attributes",
++  "prepare custom attributes for moz-check");
+diff --git a/build/clang-plugin/CustomAttributes.h b/build/clang-plugin/CustomAttributes.h
+new file mode 100644
+index 000000000..843849829
+--- /dev/null
++++ b/build/clang-plugin/CustomAttributes.h
+@@ -0,0 +1,40 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef CustomAttributes_h__
++#define CustomAttributes_h__
++
++#include "clang/AST/DeclBase.h"
++#include "llvm/ADT/StringRef.h"
++
++enum CustomAttributes {
++#define ATTR(a) a,
++#include "CustomAttributes.inc"
++#undef ATTR
++};
++
++struct CustomAttributesSet {
++#define ATTR(a) bool has_ ## a: 1;
++#include "CustomAttributes.inc"
++#undef ATTR
++};
++
++template<CustomAttributes A>
++bool hasCustomAttribute(const clang::Decl* D) {
++  return false;
++}
++
++extern CustomAttributesSet GetAttributes(const clang::Decl* D);
++
++#define ATTR(name) \
++  template<> \
++  inline bool hasCustomAttribute<name>(const clang::Decl* D) { \
++    return GetAttributes(D).has_ ## name; \
++  }
++#include "CustomAttributes.inc"
++#undef ATTR
++
++extern bool hasCustomAttribute(const clang::Decl* D, CustomAttributes A);
++
++#endif /* CustomAttributes_h__ */
+diff --git a/build/clang-plugin/CustomAttributes.inc b/build/clang-plugin/CustomAttributes.inc
+new file mode 100644
+index 000000000..9b03c26da
+--- /dev/null
++++ b/build/clang-plugin/CustomAttributes.inc
+@@ -0,0 +1,30 @@
++ATTR(moz_allow_temporary)
++ATTR(moz_can_run_script)
++ATTR(moz_can_run_script_boundary)
++ATTR(moz_global_class)
++ATTR(moz_heap_allocator)
++ATTR(moz_heap_class)
++ATTR(moz_implicit)
++ATTR(moz_inherit_type_annotations_from_template_args)
++ATTR(moz_is_smartptr_to_refcounted)
++ATTR(moz_may_call_after_must_return)
++ATTR(moz_must_override)
++ATTR(moz_must_return_from_caller_if_this_is_arg)
++ATTR(moz_must_use_type)
++ATTR(moz_needs_memmovable_members)
++ATTR(moz_needs_memmovable_type)
++ATTR(moz_needs_no_vtable_type)
++ATTR(moz_no_addref_release_on_return)
++ATTR(moz_no_arith_expr_in_arg)
++ATTR(moz_no_dangling_on_temporaries)
++ATTR(moz_non_autoable)
++ATTR(moz_non_memmovable)
++ATTR(moz_non_param)
++ATTR(moz_non_temporary_class)
++ATTR(moz_nonheap_class)
++ATTR(moz_required_base_method)
++ATTR(moz_stack_class)
++ATTR(moz_static_local_class)
++ATTR(moz_temporary_class)
++ATTR(moz_trivial_ctor_dtor)
++ATTR(moz_trivial_dtor)
+commit 4d9346d39f9ba10a1b2cb0a9f877d26f73fe6b21
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 10:57:27 2019 +0000
+
+    Add more files
+
+diff --git a/build/clang-plugin/ThirdPartyPaths.h b/build/clang-plugin/ThirdPartyPaths.h
+new file mode 100644
+index 000000000..6a497923f
+--- /dev/null
++++ b/build/clang-plugin/ThirdPartyPaths.h
+@@ -0,0 +1,17 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef ThirdPartyPaths_h__
++#define ThirdPartyPaths_h__
++
++#include <stdint.h>
++
++// These two values are defined in ThirdPartyPaths.cpp, which is a file
++// generated by ThirdPartyPaths.py.
++
++extern const char *MOZ_THIRD_PARTY_PATHS[];
++
++extern const uint32_t MOZ_THIRD_PARTY_PATHS_COUNT;
++
++#endif
+diff --git a/build/clang-plugin/ThirdPartyPaths.py b/build/clang-plugin/ThirdPartyPaths.py
+new file mode 100644
+index 000000000..7988c420c
+--- /dev/null
++++ b/build/clang-plugin/ThirdPartyPaths.py
+@@ -0,0 +1,37 @@
++#!/usr/bin/env python3
++
++import json
++
++
++def generate(output, *input_paths):
++    """
++    This file generates a ThirdPartyPaths.cpp file from the ThirdPartyPaths.txt
++    file in /tools/rewriting, which is used by the Clang Plugin to help identify
++    sources which should be ignored.
++    """
++    tpp_list = []
++    lines = set()
++
++    for path in input_paths:
++        with open(path) as f:
++            lines.update(f.readlines())
++
++    for line in lines:
++        line = line.strip()
++        if line.endswith('/'):
++            line = line[:-1]
++        tpp_list.append(line)
++    tpp_strings = ',\n  '.join([json.dumps(tpp) for tpp in tpp_list])
++
++    output.write("""\
++/* THIS FILE IS GENERATED BY ThirdPartyPaths.py - DO NOT EDIT */
++
++#include <stdint.h>
++
++const char* MOZ_THIRD_PARTY_PATHS[] = {
++  %s
++};
++
++extern const uint32_t MOZ_THIRD_PARTY_PATHS_COUNT = %d;
++
++""" % (tpp_strings, len(tpp_list)))
+diff --git a/build/clang-plugin/TrivialDtorChecker.cpp b/build/clang-plugin/TrivialDtorChecker.cpp
+new file mode 100644
+index 000000000..987bfd998
+--- /dev/null
++++ b/build/clang-plugin/TrivialDtorChecker.cpp
+@@ -0,0 +1,24 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "TrivialDtorChecker.h"
++#include "CustomMatchers.h"
++
++void TrivialDtorChecker::registerMatchers(MatchFinder *AstMatcher) {
++  AstMatcher->addMatcher(cxxRecordDecl(hasTrivialDtor()).bind("node"),
++                         this);
++}
++
++void TrivialDtorChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error = "class %0 must have a trivial destructor";
++  const CXXRecordDecl *Node = Result.Nodes.getNodeAs<CXXRecordDecl>("node");
++
++  if (!Node->hasDefinition()) {
++    return;
++  }
++
++  bool BadDtor = !Node->hasTrivialDestructor();
++  if (BadDtor)
++    diag(Node->getBeginLoc(), Error, DiagnosticIDs::Error) << Node;
++}
+diff --git a/build/clang-plugin/TrivialDtorChecker.h b/build/clang-plugin/TrivialDtorChecker.h
+new file mode 100644
+index 000000000..dd0be727e
+--- /dev/null
++++ b/build/clang-plugin/TrivialDtorChecker.h
+@@ -0,0 +1,18 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef TrivialDtorChecker_h__
++#define TrivialDtorChecker_h__
++
++#include "plugin.h"
++
++class TrivialDtorChecker : public BaseCheck {
++public:
++  TrivialDtorChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
++  void check(const MatchFinder::MatchResult &Result) override;
++};
++
++#endif
+commit 6080af89ced86fd424469e9aa80af519f23194d0
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 11:08:13 2019 +0000
+
+    Add more files
+
+diff --git a/build/clang-plugin/CanRunScriptChecker.cpp b/build/clang-plugin/CanRunScriptChecker.cpp
+new file mode 100644
+index 000000000..c98657745
+--- /dev/null
++++ b/build/clang-plugin/CanRunScriptChecker.cpp
+@@ -0,0 +1,407 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++/**
++ * This checker implements the "can run script" analysis.  The idea is to detect
++ * functions that can run script that are being passed reference-counted
++ * arguments (including "this") whose refcount might go to zero as a result of
++ * the script running.  We want to prevent that.
++ *
++ * The approach is to attempt to enforce the following invariants on the call
++ * graph:
++ *
++ * 1) Any caller of a MOZ_CAN_RUN_SCRIPT function is itself MOZ_CAN_RUN_SCRIPT.
++ * 2) If a virtual MOZ_CAN_RUN_SCRIPT method overrides a base class method,
++ *    that base class method is also MOZ_CAN_RUN_SCRIPT.
++ *
++ * Invariant 2 ensures that we don't accidentally call a MOZ_CAN_RUN_SCRIPT
++ * function via a base-class virtual call.  Invariant 1 ensures that
++ * the property of being able to run script propagates up the callstack.  There
++ * is an opt-out for invariant 1: A function (declaration _or_ implementation)
++ * can be decorated with MOZ_CAN_RUN_SCRIPT_BOUNDARY to indicate that we do not
++ * require it or any of its callers to be MOZ_CAN_RUN_SCRIPT even if it calls
++ * MOZ_CAN_RUN_SCRIPT functions.
++ *
++ * There are two known holes in invariant 1, apart from the
++ * MOZ_CAN_RUN_SCRIPT_BOUNDARY opt-out:
++ *
++ *  - Functions called via function pointers can be MOZ_CAN_RUN_SCRIPT even if
++ *    their caller is not, because we have no way to determine from the function
++ *    pointer what function is being called.
++ *  - MOZ_CAN_RUN_SCRIPT destructors can happen in functions that are not
++ *    MOZ_CAN_RUN_SCRIPT.
++ *    https://bugzilla.mozilla.org/show_bug.cgi?id=1535523 tracks this.
++ *
++ * Given those invariants we then require that when calling a MOZ_CAN_RUN_SCRIPT
++ * function all refcounted arguments (including "this") satisfy one of these
++ * conditions:
++ *  a) The argument is held via a strong pointer on the stack.
++ *  b) The argument is a const strong pointer member of "this".  We know "this"
++ *     is being kept alive, and a const strong pointer member can't drop its ref
++ *     until "this" dies.
++ *  c) The argument is an argument of the caller (and hence held by a strong
++ *     pointer somewhere higher up the callstack).
++ *  d) The argument is explicitly annotated with MOZ_KnownLive, which indicates
++ *     that something is guaranteed to keep it alive (e.g. it's rooted via a JS
++ *     reflector).
++ *  e) The argument is constexpr and therefore cannot disappear.
++ */
++
++#include "CanRunScriptChecker.h"
++#include "CustomMatchers.h"
++#include "clang/Lex/Lexer.h"
++
++void CanRunScriptChecker::registerMatchers(MatchFinder *AstMatcher) {
++  auto Refcounted = qualType(hasDeclaration(cxxRecordDecl(isRefCounted())));
++  auto StackSmartPtr =
++    ignoreTrivials(
++      declRefExpr(to(varDecl(hasAutomaticStorageDuration())),
++                  hasType(isSmartPtrToRefCounted())));
++  auto ConstMemberOfThisSmartPtr =
++    memberExpr(hasType(isSmartPtrToRefCounted()),
++               hasType(isConstQualified()),
++               hasObjectExpression(cxxThisExpr()));
++  // A smartptr can be known-live for three reasons:
++  // 1) It's declared on the stack.
++  // 2) It's a const member of "this".  We know "this" is alive (recursively)
++  //    and const members can't change their value hence can't drop their
++  //    reference until "this" gets destroyed.
++  // 3) It's an immediate temporary being constructed at the point where the
++  //    call is happening.
++  auto KnownLiveSmartPtr = anyOf(
++    StackSmartPtr,
++    ConstMemberOfThisSmartPtr,
++    ignoreTrivials(cxxConstructExpr(hasType(isSmartPtrToRefCounted()))));
++
++  auto MozKnownLiveCall =
++    ignoreTrivials(callExpr(callee(functionDecl(hasName("MOZ_KnownLive")))));
++
++  // Params of the calling function are presumed live, because it itself should be
++  // MOZ_CAN_RUN_SCRIPT.  Note that this is subject to
++  // https://bugzilla.mozilla.org/show_bug.cgi?id=1537656 a the moment.
++  auto KnownLiveParam = anyOf(
++      // "this" is OK
++      cxxThisExpr(),
++      // A parameter of the calling function is OK.
++      declRefExpr(to(parmVarDecl())));
++
++  // A matcher that matches various things that are known to be live directly,
++  // without making any assumptions about operators.
++  auto KnownLiveBase = anyOf(
++      // Things that are known to be a stack or immutable refptr.
++      KnownLiveSmartPtr,
++      // MOZ_KnownLive() calls.
++      MozKnownLiveCall,
++      // Params of the caller function.
++      KnownLiveParam,
++      // Constexpr things.
++      declRefExpr(to(varDecl(isConstexpr()))));
++
++  // A matcher that matches various known-live things that don't involve
++  // non-unary operators.
++  auto KnownLiveSimple = anyOf(
++      // Things that are just known live.
++      KnownLiveBase,
++      // Method calls on a live things that are smart ptrs.  Note that we don't
++      // want to allow general method calls on live things, because those can
++      // return non-live objects (e.g. consider "live_pointer->foo()" as an
++      // example).  For purposes of this analysis we are assuming the method
++      // calls on smart ptrs all just return the pointer inside,
++      cxxMemberCallExpr(on(
++          allOf(hasType(isSmartPtrToRefCounted()),
++                KnownLiveBase))),
++      // operator* or operator-> on a thing that is already known to be live.
++      cxxOperatorCallExpr(
++          anyOf(hasOverloadedOperatorName("*"),
++                hasOverloadedOperatorName("->")),
++          hasAnyArgument(KnownLiveBase),
++          argumentCountIs(1)),
++      // A dereference on a thing that is known to be live.  This is _not_
++      // caught by the "operator* or operator->" clause above, because
++      // cxxOperatorCallExpr() only catches cases when a class defines
++      // operator*.  The default (built-in) operator* matches unaryOperator()
++      // instead.),
++      unaryOperator(
++          unaryDereferenceOperator(),
++          hasUnaryOperand(
++              // If we're doing *someArg, the argument of the dereference is an
++              // ImplicitCastExpr LValueToRValue which has the DeclRefExpr as an
++              // argument.  We could try to match that explicitly with a custom
++              // matcher (none of the built-in matchers seem to match on the
++              // thing being cast for an implicitCastExpr), but it's simpler to
++              // just use ignoreTrivials to strip off the cast.
++              ignoreTrivials(KnownLiveBase))),
++      // Taking a pointer to a live reference.  We explicitly want to exclude
++      // things that are not of type reference-to-refcounted or type refcounted,
++      // because if someone takes a pointer to a pointer to refcounted or a
++      // pointer to a smart ptr and passes those in to a callee that definitely
++      // does not guarantee liveness; in fact the callee could modify those
++      // things!  In practice they would be the wrong type anyway, though, so
++      // it's hard to add a test for this.
++      unaryOperator(
++          hasOperatorName("&"),
++          hasUnaryOperand(allOf(
++              anyOf(
++                  hasType(references(Refcounted)),
++                  hasType(Refcounted)),
++              ignoreTrivials(KnownLiveBase))))
++      );
++
++  auto KnownLive = anyOf(
++      // Anything above, of course.
++      KnownLiveSimple,
++      // Conditional operators where both arms are live.
++      conditionalOperator(
++          hasFalseExpression(ignoreTrivials(KnownLiveSimple)),
++          hasTrueExpression(ignoreTrivials(KnownLiveSimple)))
++      // We're not handling cases like a dereference of a conditional operator,
++      // mostly because handling a dereference in general is so ugly.  I
++      // _really_ wish I could just write a recursive matcher here easily.
++      );
++
++  auto InvalidArg =
++      ignoreTrivialsConditional(
++        // We want to consider things if there is anything refcounted involved,
++        // including in any of the trivials that we otherwise strip off.
++        anyOf(
++          hasType(Refcounted),
++          hasType(pointsTo(Refcounted)),
++          hasType(references(Refcounted)),
++          hasType(isSmartPtrToRefCounted())
++        ),
++        // We want to find any expression,
++        expr(
++          // which is not known live,
++          unless(KnownLive),
++          // and which is not a default arg with value nullptr, since those are
++          // always safe,
++          unless(cxxDefaultArgExpr(isNullDefaultArg())),
++          // and which is not a literal nullptr,
++          unless(cxxNullPtrLiteralExpr()),
++          expr().bind("invalidArg")));
++
++  // A matcher which will mark the first invalid argument it finds invalid, but
++  // will always match, even if it finds no invalid arguments, so it doesn't
++  // preclude other matchers from running and maybe finding invalid args.
++  auto OptionalInvalidExplicitArg = anyOf(
++      // We want to find any argument which is invalid.
++      hasAnyArgument(InvalidArg),
++
++      // This makes this matcher optional.
++      anything());
++
++  // Please note that the hasCanRunScriptAnnotation() matchers are not present
++  // directly in the cxxMemberCallExpr, callExpr and constructExpr matchers
++  // because we check that the corresponding functions can run script later in
++  // the checker code.
++  AstMatcher->addMatcher(
++      expr(
++          anyOf(
++              // We want to match a method call expression,
++              cxxMemberCallExpr(
++                  // which optionally has an invalid arg,
++                  OptionalInvalidExplicitArg,
++                  // or which optionally has an invalid this argument,
++                  anyOf(
++                    on(InvalidArg),
++                    anything()
++                  ),
++                  expr().bind("callExpr")),
++              // or a regular call expression,
++              callExpr(
++                  // which optionally has an invalid arg.
++                  OptionalInvalidExplicitArg, expr().bind("callExpr")),
++              // or a construct expression,
++              cxxConstructExpr(
++                  // which optionally has an invalid arg.
++                  OptionalInvalidExplicitArg, expr().bind("constructExpr"))),
++
++          anyOf(
++              // We want to match the parent function.
++              forFunction(functionDecl().bind("nonCanRunScriptParentFunction")),
++
++              // ... optionally.
++              anything())),
++      this);
++}
++
++void CanRunScriptChecker::onStartOfTranslationUnit() {
++  IsFuncSetBuilt = false;
++  CanRunScriptFuncs.clear();
++}
++
++namespace {
++/// This class is a callback used internally to match function declarations with
++/// the MOZ_CAN_RUN_SCRIPT annotation, adding these functions to the
++/// can-run-script function set and making sure the functions they override (if
++/// any) also have the annotation.
++class FuncSetCallback : public MatchFinder::MatchCallback {
++public:
++  FuncSetCallback(CanRunScriptChecker& Checker,
++                  std::unordered_set<const FunctionDecl *> &FuncSet)
++      : CanRunScriptFuncs(FuncSet),
++        Checker(Checker) {}
++
++  void run(const MatchFinder::MatchResult &Result) override;
++
++private:
++  /// This method checks the methods overriden by the given parameter.
++  void checkOverriddenMethods(const CXXMethodDecl *Method);
++
++  std::unordered_set<const FunctionDecl *> &CanRunScriptFuncs;
++  CanRunScriptChecker &Checker;
++};
++
++void FuncSetCallback::run(const MatchFinder::MatchResult &Result) {
++  const FunctionDecl *Func;
++  if (auto *Lambda = Result.Nodes.getNodeAs<LambdaExpr>("lambda")) {
++    Func = Lambda->getCallOperator();
++    if (!Func || !hasCustomAttribute<moz_can_run_script>(Func))
++      return;
++  } else {
++    Func = Result.Nodes.getNodeAs<FunctionDecl>("canRunScriptFunction");
++  }
++
++  CanRunScriptFuncs.insert(Func);
++
++  // If this is a method, we check the methods it overrides.
++  if (auto *Method = dyn_cast<CXXMethodDecl>(Func)) {
++    checkOverriddenMethods(Method);
++  }
++}
++
++void FuncSetCallback::checkOverriddenMethods(const CXXMethodDecl *Method) {
++  for (auto OverriddenMethod : Method->overridden_methods()) {
++    if (!hasCustomAttribute<moz_can_run_script>(OverriddenMethod)) {
++      const char *ErrorNonCanRunScriptOverridden =
++          "functions marked as MOZ_CAN_RUN_SCRIPT cannot override functions "
++          "that are not marked MOZ_CAN_RUN_SCRIPT";
++      const char* NoteNonCanRunScriptOverridden =
++          "overridden function declared here";
++
++      Checker.diag(Method->getLocation(), ErrorNonCanRunScriptOverridden,
++                   DiagnosticIDs::Error);
++      Checker.diag(OverriddenMethod->getLocation(),
++                   NoteNonCanRunScriptOverridden,
++                   DiagnosticIDs::Note);
++    }
++  }
++}
++} // namespace
++
++void CanRunScriptChecker::buildFuncSet(ASTContext *Context) {
++  // We create a match finder.
++  MatchFinder Finder;
++  // We create the callback which will be called when we find a function with
++  // a MOZ_CAN_RUN_SCRIPT annotation.
++  FuncSetCallback Callback(*this, CanRunScriptFuncs);
++  // We add the matcher to the finder, linking it to our callback.
++  Finder.addMatcher(
++      functionDecl(hasCanRunScriptAnnotation()).bind("canRunScriptFunction"),
++      &Callback);
++  Finder.addMatcher(
++      lambdaExpr().bind("lambda"),
++      &Callback);
++  // We start the analysis, given the ASTContext our main checker is in.
++  Finder.matchAST(*Context);
++}
++
++void CanRunScriptChecker::check(const MatchFinder::MatchResult &Result) {
++
++  // If the set of functions which can run script is not yet built, then build
++  // it.
++  if (!IsFuncSetBuilt) {
++    buildFuncSet(Result.Context);
++    IsFuncSetBuilt = true;
++  }
++
++  const char *ErrorInvalidArg =
++      "arguments must all be strong refs or caller's parameters when calling a "
++      "function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object "
++      "argument).  '%0' is neither.";
++
++  const char *ErrorNonCanRunScriptParent =
++      "functions marked as MOZ_CAN_RUN_SCRIPT can only be called from "
++      "functions also marked as MOZ_CAN_RUN_SCRIPT";
++  const char *NoteNonCanRunScriptParent = "caller function declared here";
++
++  const Expr *InvalidArg;
++  if (const CXXDefaultArgExpr* defaultArg =
++          Result.Nodes.getNodeAs<CXXDefaultArgExpr>("invalidArg")) {
++    InvalidArg = defaultArg->getExpr();
++  } else {
++    InvalidArg = Result.Nodes.getNodeAs<Expr>("invalidArg");
++  }
++
++  const CallExpr *Call = Result.Nodes.getNodeAs<CallExpr>("callExpr");
++  // If we don't find the FunctionDecl linked to this call or if it's not marked
++  // as can-run-script, consider that we didn't find a match.
++  if (Call && (!Call->getDirectCallee() ||
++               !CanRunScriptFuncs.count(Call->getDirectCallee()))) {
++    Call = nullptr;
++  }
++
++  const CXXConstructExpr *Construct =
++      Result.Nodes.getNodeAs<CXXConstructExpr>("constructExpr");
++
++  // If we don't find the CXXConstructorDecl linked to this construct expression
++  // or if it's not marked as can-run-script, consider that we didn't find a
++  // match.
++  if (Construct && (!Construct->getConstructor() ||
++                    !CanRunScriptFuncs.count(Construct->getConstructor()))) {
++    Construct = nullptr;
++  }
++
++  const FunctionDecl *ParentFunction =
++      Result.Nodes.getNodeAs<FunctionDecl>("nonCanRunScriptParentFunction");
++  // If the parent function can run script, consider that we didn't find a match
++  // because we only care about parent functions which can't run script.
++  //
++  // In addition, If the parent function is annotated as a
++  // CAN_RUN_SCRIPT_BOUNDARY, we don't want to complain about it calling a
++  // CAN_RUN_SCRIPT function. This is a mechanism to opt out of the infectious
++  // nature of CAN_RUN_SCRIPT which is necessary in some tricky code like
++  // Bindings.
++  if (ParentFunction &&
++      (CanRunScriptFuncs.count(ParentFunction) ||
++       hasCustomAttribute<moz_can_run_script_boundary>(ParentFunction))) {
++    ParentFunction = nullptr;
++  }
++
++  // Get the call range from either the CallExpr or the ConstructExpr.
++  SourceRange CallRange;
++  if (Call) {
++    CallRange = Call->getSourceRange();
++  } else if (Construct) {
++    CallRange = Construct->getSourceRange();
++  } else {
++    // If we have neither a Call nor a Construct, we have nothing do to here.
++    return;
++  }
++
++  // If we have an invalid argument in the call, we emit the diagnostic to
++  // signal it.
++  if (InvalidArg) {
++    const std::string invalidArgText =
++        Lexer::getSourceText(
++            CharSourceRange::getTokenRange(InvalidArg->getSourceRange()),
++            Result.Context->getSourceManager(),
++            Result.Context->getLangOpts());
++    diag(InvalidArg->getExprLoc(), ErrorInvalidArg, DiagnosticIDs::Error)
++        << InvalidArg->getSourceRange() << invalidArgText;
++  }
++
++  // If the parent function is not marked as MOZ_CAN_RUN_SCRIPT, we emit an
++  // error and a not indicating it.
++  if (ParentFunction) {
++    assert(!hasCustomAttribute<moz_can_run_script>(ParentFunction) &&
++           "Matcher missed something");
++
++    diag(CallRange.getBegin(), ErrorNonCanRunScriptParent, DiagnosticIDs::Error)
++        << CallRange;
++
++    diag(ParentFunction->getCanonicalDecl()->getLocation(),
++         NoteNonCanRunScriptParent, DiagnosticIDs::Note);
++  }
++}
+diff --git a/build/clang-plugin/CanRunScriptChecker.h b/build/clang-plugin/CanRunScriptChecker.h
+new file mode 100644
+index 000000000..451660999
+--- /dev/null
++++ b/build/clang-plugin/CanRunScriptChecker.h
+@@ -0,0 +1,31 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef CanRunScriptChecker_h__
++#define CanRunScriptChecker_h__
++
++#include "plugin.h"
++#include <unordered_set>
++
++class CanRunScriptChecker : public BaseCheck {
++public:
++  CanRunScriptChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
++  void check(const MatchFinder::MatchResult &Result) override;
++
++  // Simply initialize the can-run-script function set at the beginning of each
++  // translation unit.
++  void onStartOfTranslationUnit() override;
++
++private:
++  /// Runs the inner matcher on the AST to find all the can-run-script
++  /// functions using custom rules (not only the annotation).
++  void buildFuncSet(ASTContext *Context);
++
++  bool IsFuncSetBuilt;
++  std::unordered_set<const FunctionDecl *> CanRunScriptFuncs;
++};
++
++#endif
+commit 19d5c829a8ce53387b13895db68af3c5bd11b241
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 11:14:00 2019 +0000
+
+    Yet more files
+
+diff --git a/build/clang-plugin/DanglingOnTemporaryChecker.cpp b/build/clang-plugin/DanglingOnTemporaryChecker.cpp
+new file mode 100644
+index 000000000..98747ecaa
+--- /dev/null
++++ b/build/clang-plugin/DanglingOnTemporaryChecker.cpp
+@@ -0,0 +1,256 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "DanglingOnTemporaryChecker.h"
++#include "CustomMatchers.h"
++#include "VariableUsageHelpers.h"
++
++void DanglingOnTemporaryChecker::registerMatchers(MatchFinder *AstMatcher) {
++  ////////////////////////////////////////
++  // Quick annotation conflict checkers //
++  ////////////////////////////////////////
++
++  AstMatcher->addMatcher(
++      // This is a matcher on a method declaration,
++      cxxMethodDecl(
++          // which is marked as no dangling on temporaries,
++          noDanglingOnTemporaries(),
++
++          // and which is && ref-qualified.
++          isRValueRefQualified(),
++
++          decl().bind("invalidMethodRefQualified")),
++      this);
++
++  AstMatcher->addMatcher(
++      // This is a matcher on a method declaration,
++      cxxMethodDecl(
++          // which is marked as no dangling on temporaries,
++          noDanglingOnTemporaries(),
++
++          // which returns a primitive type,
++          returns(builtinType()),
++
++          // and which doesn't return a pointer.
++          unless(returns(pointerType())),
++
++          decl().bind("invalidMethodPointer")),
++      this);
++
++  //////////////////
++  // Main checker //
++  //////////////////
++
++  auto hasParentCall = hasParent(expr(
++      anyOf(cxxOperatorCallExpr(
++                // If we're in a lamda, we may have an operator call expression
++                // ancestor in the AST, but the temporary we're matching
++                // against is not going to have the same lifetime as the
++                // constructor call.
++                unless(has(expr(ignoreTrivials(lambdaExpr())))),
++                expr().bind("parentOperatorCallExpr")),
++            callExpr(
++                // If we're in a lamda, we may have a call expression
++                // ancestor in the AST, but the temporary we're matching
++                // against is not going to have the same lifetime as the
++                // function call.
++                unless(has(expr(ignoreTrivials(lambdaExpr())))),
++                expr().bind("parentCallExpr")),
++            objcMessageExpr(
++                // If we're in a lamda, we may have an objc message expression
++                // ancestor in the AST, but the temporary we're matching
++                // against is not going to have the same lifetime as the
++                // function call.
++                unless(has(expr(ignoreTrivials(lambdaExpr())))),
++                expr().bind("parentObjCMessageExpr")),
++            cxxConstructExpr(
++                // If we're in a lamda, we may have a construct expression
++                // ancestor in the AST, but the temporary we're matching
++                // against is not going to have the same lifetime as the
++                // constructor call.
++                unless(has(expr(ignoreTrivials(lambdaExpr())))),
++                expr().bind("parentConstructExpr")))));
++
++  AstMatcher->addMatcher(
++      // This is a matcher on a method call,
++      cxxMemberCallExpr(
++          // which is in first party code,
++          isFirstParty(),
++
++          // and which is performed on a temporary,
++          on(allOf(unless(hasType(pointerType())), isTemporary(),
++                   // but which is not `this`.
++                   unless(cxxThisExpr()))),
++
++          // and which is marked as no dangling on temporaries.
++          callee(cxxMethodDecl(noDanglingOnTemporaries())),
++
++          expr().bind("memberCallExpr"),
++
++          // We optionally match a parent call expression or a parent construct
++          // expression because using a temporary inside a call is fine as long
++          // as the pointer doesn't escape the function call.
++          anyOf(
++              // This is the case where the call is the direct parent, so we
++              // know that the member call expression is the argument.
++              allOf(hasParentCall, expr().bind("parentCallArg")),
++
++              // This is the case where the call is not the direct parent, so we
++              // get its child to know in which argument tree we are.
++              hasAncestor(expr(hasParentCall, expr().bind("parentCallArg"))),
++              // To make it optional.
++              anything())),
++      this);
++}
++
++void DanglingOnTemporaryChecker::check(const MatchFinder::MatchResult &Result) {
++  ///////////////////////////////////////
++  // Quick annotation conflict checker //
++  ///////////////////////////////////////
++
++  const char *ErrorInvalidRefQualified = "methods annotated with "
++                                         "MOZ_NO_DANGLING_ON_TEMPORARIES "
++                                         "cannot be && ref-qualified";
++
++  const char *ErrorInvalidPointer = "methods annotated with "
++                                    "MOZ_NO_DANGLING_ON_TEMPORARIES must "
++                                    "return a pointer";
++
++  if (auto InvalidRefQualified =
++          Result.Nodes.getNodeAs<CXXMethodDecl>("invalidMethodRefQualified")) {
++    diag(InvalidRefQualified->getLocation(), ErrorInvalidRefQualified,
++         DiagnosticIDs::Error);
++    return;
++  }
++
++  if (auto InvalidPointer =
++          Result.Nodes.getNodeAs<CXXMethodDecl>("invalidMethodPointer")) {
++    diag(InvalidPointer->getLocation(), ErrorInvalidPointer,
++         DiagnosticIDs::Error);
++    return;
++  }
++
++  //////////////////
++  // Main checker //
++  //////////////////
++
++  const char *Error = "calling `%0` on a temporary, potentially allowing use "
++                      "after free of the raw pointer";
++
++  const char *EscapeStmtNote =
++      "the raw pointer escapes the function scope here";
++
++  const ObjCMessageExpr *ParentObjCMessageExpr =
++      Result.Nodes.getNodeAs<ObjCMessageExpr>("parentObjCMessageExpr");
++
++  // We don't care about cases in ObjC message expressions.
++  if (ParentObjCMessageExpr) {
++    return;
++  }
++
++  const CXXMemberCallExpr *MemberCall =
++      Result.Nodes.getNodeAs<CXXMemberCallExpr>("memberCallExpr");
++
++  const CallExpr *ParentCallExpr =
++      Result.Nodes.getNodeAs<CallExpr>("parentCallExpr");
++  const CXXConstructExpr *ParentConstructExpr =
++      Result.Nodes.getNodeAs<CXXConstructExpr>("parentConstructExpr");
++  const CXXOperatorCallExpr *ParentOperatorCallExpr =
++      Result.Nodes.getNodeAs<CXXOperatorCallExpr>("parentOperatorCallExpr");
++  const Expr *ParentCallArg = Result.Nodes.getNodeAs<Expr>("parentCallArg");
++
++  // Just in case.
++  if (!MemberCall) {
++    return;
++  }
++
++  // If we have a parent call, we check whether or not we escape the function
++  // being called.
++  if (ParentOperatorCallExpr || ParentCallExpr || ParentConstructExpr) {
++    // Just in case.
++    if (!ParentCallArg) {
++      return;
++    }
++
++    // No default constructor so we can't construct it using if/else.
++    auto FunctionEscapeData =
++        ParentOperatorCallExpr
++            ? escapesFunction(ParentCallArg, ParentOperatorCallExpr)
++            : ParentCallExpr
++                  ? escapesFunction(ParentCallArg, ParentCallExpr)
++                  : escapesFunction(ParentCallArg, ParentConstructExpr);
++
++    // If there was an error in the escapesFunction call.
++    if (std::error_code ec = FunctionEscapeData.getError()) {
++      // FIXME: For now we ignore the variadic case and just consider that the
++      // argument doesn't escape the function. Same for the case where we can't
++      // find the function declaration or if the function is builtin.
++      if (static_cast<EscapesFunctionError>(ec.value()) ==
++              EscapesFunctionError::FunctionIsVariadic ||
++          static_cast<EscapesFunctionError>(ec.value()) ==
++              EscapesFunctionError::FunctionDeclNotFound ||
++          static_cast<EscapesFunctionError>(ec.value()) ==
++              EscapesFunctionError::FunctionIsBuiltin) {
++        return;
++      }
++
++      // We emit the internal checker error and return.
++      diag(MemberCall->getExprLoc(),
++           std::string(ec.category().name()) + " error: " + ec.message(),
++           DiagnosticIDs::Error);
++      return;
++    }
++
++    // We deconstruct the function escape data.
++    const Stmt *EscapeStmt;
++    const Decl *EscapeDecl;
++    std::tie(EscapeStmt, EscapeDecl) = *FunctionEscapeData;
++
++    // If we didn't escape a parent function, we're done: we don't emit any
++    // diagnostic.
++    if (!EscapeStmt || !EscapeDecl) {
++      return;
++    }
++
++    // We emit the error diagnostic indicating that we are calling the method
++    // temporary.
++    diag(MemberCall->getExprLoc(), Error, DiagnosticIDs::Error)
++        << MemberCall->getMethodDecl()->getName()
++        << MemberCall->getSourceRange();
++
++    // We indicate the escape statement.
++    diag(EscapeStmt->getBeginLoc(), EscapeStmtNote, DiagnosticIDs::Note)
++        << EscapeStmt->getSourceRange();
++
++    // We build the escape note along with its source range.
++    StringRef EscapeDeclNote;
++    SourceRange EscapeDeclRange;
++    if (isa<ParmVarDecl>(EscapeDecl)) {
++      EscapeDeclNote = "through the parameter declared here";
++      EscapeDeclRange = EscapeDecl->getSourceRange();
++    } else if (isa<VarDecl>(EscapeDecl)) {
++      EscapeDeclNote = "through the variable declared here";
++      EscapeDeclRange = EscapeDecl->getSourceRange();
++    } else if (isa<FieldDecl>(EscapeDecl)) {
++      EscapeDeclNote = "through the field declared here";
++      EscapeDeclRange = EscapeDecl->getSourceRange();
++    } else if (auto FuncDecl = dyn_cast<FunctionDecl>(EscapeDecl)) {
++      EscapeDeclNote = "through the return value of the function declared here";
++      EscapeDeclRange = FuncDecl->getReturnTypeSourceRange();
++    } else {
++      return;
++    }
++
++    // We emit the declaration note indicating through which decl the argument
++    // escapes.
++    diag(EscapeDecl->getLocation(), EscapeDeclNote, DiagnosticIDs::Note)
++        << EscapeDeclRange;
++  } else {
++    // We emit the error diagnostic indicating that we are calling the method
++    // temporary.
++    diag(MemberCall->getExprLoc(), Error, DiagnosticIDs::Error)
++        << MemberCall->getMethodDecl()->getName()
++        << MemberCall->getSourceRange();
++  }
++}
+diff --git a/build/clang-plugin/DanglingOnTemporaryChecker.h b/build/clang-plugin/DanglingOnTemporaryChecker.h
+new file mode 100644
+index 000000000..43f19ebed
+--- /dev/null
++++ b/build/clang-plugin/DanglingOnTemporaryChecker.h
+@@ -0,0 +1,19 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef DanglingOnTemporaryChecker_h__
++#define DanglingOnTemporaryChecker_h__
++
++#include "plugin.h"
++
++class DanglingOnTemporaryChecker : public BaseCheck {
++public:
++  DanglingOnTemporaryChecker(StringRef CheckName,
++                             ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
++  void check(const MatchFinder::MatchResult &Result) override;
++};
++
++#endif
+commit 32bc282c096367e7197bb39e3ef171aa453f6a5c
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 11:21:49 2019 +0000
+
+    More files
+
+diff --git a/build/clang-plugin/ParamTraitsEnumChecker.cpp b/build/clang-plugin/ParamTraitsEnumChecker.cpp
+new file mode 100644
+index 000000000..b29b70397
+--- /dev/null
++++ b/build/clang-plugin/ParamTraitsEnumChecker.cpp
+@@ -0,0 +1,37 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#include "ParamTraitsEnumChecker.h"
++#include "CustomMatchers.h"
++
++void ParamTraitsEnumChecker::registerMatchers(MatchFinder* AstMatcher) {
++  AstMatcher->addMatcher(
++    classTemplateSpecializationDecl(hasName("ParamTraits")).bind("decl"), this);
++}
++
++void ParamTraitsEnumChecker::check(const MatchFinder::MatchResult &Result) {
++  const ClassTemplateSpecializationDecl *Decl =
++    Result.Nodes.getNodeAs<ClassTemplateSpecializationDecl>("decl");
++
++  for (auto& Inner : Decl->decls()) {
++    if (auto* Def = dyn_cast<TypedefDecl>(Inner)) {
++      QualType UnderlyingType = Def->getUnderlyingType();
++      QualType CanonicalType = UnderlyingType.getCanonicalType();
++
++      const clang::Type *TypePtr = CanonicalType.getTypePtrOrNull();
++      if (!TypePtr) {
++        return;
++      }
++
++      if (TypePtr->isEnumeralType()) {
++        diag(Decl->getBeginLoc(),
++             "Custom ParamTraits implementation for an enum type",
++             DiagnosticIDs::Error);
++        diag(Decl->getBeginLoc(),
++             "Please use a helper class for example ContiguousEnumSerializer",
++             DiagnosticIDs::Note);
++      }
++    }
++  }
++}
+diff --git a/build/clang-plugin/ParamTraitsEnumChecker.h b/build/clang-plugin/ParamTraitsEnumChecker.h
+new file mode 100644
+index 000000000..0aafa8584
+--- /dev/null
++++ b/build/clang-plugin/ParamTraitsEnumChecker.h
+@@ -0,0 +1,19 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
++
++#ifndef ParamTraitsEnumChecker_h__
++#define ParamTraitsEnumChecker_h__
++
++#include "plugin.h"
++
++class ParamTraitsEnumChecker : public BaseCheck {
++public:
++  ParamTraitsEnumChecker(StringRef CheckName,
++                         ContextType *Context = nullptr)
++    : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder* AstMatcher) override;
++  void check(const MatchFinder::MatchResult &Result) override;
++};
++
++#endif
+commit bdb4ac8a5ac4f03620eeae4bf1e1352235e3cfca
+Author: Colin Close <itchka@compuserve.com>
+Date:   Wed Nov 20 12:40:46 2019 +0000
+
+    More clang-plugin files
+
+diff --git a/build/clang-plugin/tests/TestCanRunScript.cpp b/build/clang-plugin/tests/TestCanRunScript.cpp
+new file mode 100644
+index 000000000..78f9ca19c
+--- /dev/null
++++ b/build/clang-plugin/tests/TestCanRunScript.cpp
+@@ -0,0 +1,561 @@
++#include <mozilla/RefPtr.h>
++#include <mozilla/Maybe.h>
++
++#define MOZ_CAN_RUN_SCRIPT __attribute__((annotate("moz_can_run_script")))
++#define MOZ_CAN_RUN_SCRIPT_BOUNDARY __attribute__((annotate("moz_can_run_script_boundary")))
++
++MOZ_CAN_RUN_SCRIPT void test() {
++
++}
++
++void test_parent() { // expected-note {{caller function declared here}}
++  test(); // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT can only be called from functions also marked as MOZ_CAN_RUN_SCRIPT}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_parent2() {
++  test();
++}
++
++struct RefCountedBase;
++MOZ_CAN_RUN_SCRIPT void test2(RefCountedBase* param) {
++
++}
++
++struct RefCountedBase {
++  void AddRef();
++  void Release();
++
++  MOZ_CAN_RUN_SCRIPT void method_test() {
++    test();
++  }
++
++  MOZ_CAN_RUN_SCRIPT void method_test2() {
++    test2(this);
++  }
++
++  virtual void method_test3() { // expected-note {{caller function declared here}}
++    test(); // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT can only be called from functions also marked as MOZ_CAN_RUN_SCRIPT}}
++  }
++
++  MOZ_CAN_RUN_SCRIPT void method_test4() {
++    method_test();
++  }
++
++  MOZ_CAN_RUN_SCRIPT void method_test5() {
++    this->method_test();
++  }
++};
++
++MOZ_CAN_RUN_SCRIPT void testLambda() {
++  auto doIt = []() MOZ_CAN_RUN_SCRIPT {
++    test();
++  };
++
++  auto doItWrong = []() { // expected-note {{caller function declared here}}
++    test(); // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT can only be called from functions also marked as MOZ_CAN_RUN_SCRIPT}}
++  };
++
++  doIt();
++  doItWrong();
++}
++
++void test2_parent() { // expected-note {{caller function declared here}}
++  test2(new RefCountedBase); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'new RefCountedBase' is neither.}} \
++                             // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT can only be called from functions also marked as MOZ_CAN_RUN_SCRIPT}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent2() {
++  test2(new RefCountedBase); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'new RefCountedBase' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent3(RefCountedBase* param) {
++  test2(param);
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent4() {
++  RefPtr<RefCountedBase> refptr = new RefCountedBase;
++  test2(refptr);
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent5() {
++  test2(MOZ_KnownLive(new RefCountedBase));
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent6() {
++  RefPtr<RefCountedBase> refptr = new RefCountedBase;
++  refptr->method_test();
++  refptr->method_test2();
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent7() {
++  RefCountedBase* t = new RefCountedBase;
++  t->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  't' is neither.}}
++  t->method_test2(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  't' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test2_parent8() {
++  test2(nullptr);
++}
++
++MOZ_CAN_RUN_SCRIPT void test3(int* param) {}
++
++MOZ_CAN_RUN_SCRIPT void test3_parent() {
++  test3(new int);
++}
++
++struct RefCountedChild : public RefCountedBase {
++  virtual void method_test3() override; // expected-note {{overridden function declared here}} expected-note {{overridden function declared here}} expected-note {{caller function declared here}}
++};
++
++void RefCountedChild::method_test3() {
++  test(); // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT can only be called from functions also marked as MOZ_CAN_RUN_SCRIPT}}
++}
++
++struct RefCountedSubChild : public RefCountedChild {
++  MOZ_CAN_RUN_SCRIPT void method_test3() override; // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT cannot override functions that are not marked MOZ_CAN_RUN_SCRIPT}}
++};
++
++void RefCountedSubChild::method_test3() { // expected-error {{functions marked as MOZ_CAN_RUN_SCRIPT cannot override functions that are not marked MOZ_CAN_RUN_SCRIPT}}
++  test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test4() {
++  RefPtr<RefCountedBase> refptr1 = new RefCountedChild;
++  refptr1->method_test3();
++
++  RefPtr<RefCountedBase> refptr2 = new RefCountedSubChild;
++  refptr2->method_test3();
++
++  RefPtr<RefCountedChild> refptr3 = new RefCountedSubChild;
++  refptr3->method_test3();
++
++  RefPtr<RefCountedSubChild> refptr4 = new RefCountedSubChild;
++  refptr4->method_test3();
++}
++
++MOZ_CAN_RUN_SCRIPT_BOUNDARY void test5() {
++  RefPtr<RefCountedBase> refptr1 = new RefCountedChild;
++  refptr1->method_test3();
++
++  RefPtr<RefCountedBase> refptr2 = new RefCountedSubChild;
++  refptr2->method_test3();
++
++  RefPtr<RefCountedChild> refptr3 = new RefCountedSubChild;
++  refptr3->method_test3();
++
++  RefPtr<RefCountedSubChild> refptr4 = new RefCountedSubChild;
++  refptr4->method_test3();
++}
++
++// We should be able to call test5 from a non-can_run_script function.
++void test5_b() {
++  test5();
++}
++
++MOZ_CAN_RUN_SCRIPT void test6() {
++  void* x = new RefCountedBase();
++  test2((RefCountedBase*)x); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'x' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref(const RefCountedBase&) {
++
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_1() {
++  RefCountedBase* t = new RefCountedBase;
++  test_ref(*t); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*t' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_2() {
++  RefCountedBase* t = new RefCountedBase;
++  (*t).method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*t' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_3() {
++  RefCountedBase* t = new RefCountedBase;
++  auto& ref = *t;
++  test_ref(ref); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'ref' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_4() {
++  RefCountedBase* t = new RefCountedBase;
++  auto& ref = *t;
++  ref.method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'ref' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_5() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  test_ref(*t);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_6() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  (*t).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_7() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  auto& ref = *t;
++  MOZ_KnownLive(ref).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_8() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  auto& ref = *t;
++  test_ref(MOZ_KnownLive(ref));
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ref_9() {
++  void* x = new RefCountedBase();
++  test_ref(*(RefCountedBase*)x); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*(RefCountedBase*)x' is neither.}}
++}
++
++// Ignore warning not related to static analysis here
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wvoid-ptr-dereference"
++MOZ_CAN_RUN_SCRIPT void test_ref_10() {
++  void* x = new RefCountedBase();
++  test_ref((RefCountedBase&)*x); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*x' is neither.}}
++}
++#pragma GCC diagnostic pop
++
++MOZ_CAN_RUN_SCRIPT void test_maybe() {
++  mozilla::Maybe<RefCountedBase*> unsafe;
++  unsafe.emplace(new RefCountedBase);
++  (*unsafe)->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*unsafe' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_maybe_2() {
++  // FIXME(bz): This should not generate an error!
++  mozilla::Maybe<RefPtr<RefCountedBase>> safe;
++  safe.emplace(new RefCountedBase);
++  (*safe)->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '(*safe)' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_helper_1(RefCountedBase* arg = nullptr) {
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_1() {
++  test_defaults_helper_1();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_2() {
++  RefCountedBase* t = new RefCountedBase;
++  test_defaults_helper_1(t); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  't' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_3() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  test_defaults_helper_1(t);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_helper_2(RefCountedBase* arg = new RefCountedBase()) { // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'new RefCountedBase()' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_4() {
++  test_defaults_helper_2();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_5() {
++  RefCountedBase* t = new RefCountedBase;
++  test_defaults_helper_2(t); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  't' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_defaults_6() {
++  RefPtr<RefCountedBase> t = new RefCountedBase;
++  test_defaults_helper_2(t);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_arg_deref_helper(RefCountedBase&) {
++}
++
++MOZ_CAN_RUN_SCRIPT void test_arg_deref(RefCountedBase* arg) {
++  test_arg_deref_helper(*arg);
++}
++
++struct RefCountedDerefTester : public RefCountedBase {
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    test_arg_deref_helper(*this);
++  }
++};
++
++struct DisallowMemberArgs {
++  RefPtr<RefCountedBase> mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mRefCounted->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mRefCounted); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted' is neither.}}
++  }
++};
++
++struct DisallowMemberArgsWithGet {
++  RefPtr<RefCountedBase> mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mRefCounted.get()->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted.get()' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mRefCounted.get()); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted.get()' is neither.}}
++  }
++};
++
++struct AllowKnownLiveMemberArgs {
++  RefPtr<RefCountedBase> mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    MOZ_KnownLive(mRefCounted)->method_test();
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(MOZ_KnownLive(mRefCounted));
++  }
++};
++
++struct WeakPtrReturner : public RefCountedBase {
++  RefCountedBase* getWeakPtr() { return new RefCountedBase(); }
++};
++
++struct DisallowMemberCallsOnRandomKnownLive {
++  RefPtr<WeakPtrReturner> mWeakPtrReturner1;
++  WeakPtrReturner* mWeakPtrReturner2;
++
++  MOZ_CAN_RUN_SCRIPT void test_refptr_method() {
++    MOZ_KnownLive(mWeakPtrReturner1)->getWeakPtr()->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'MOZ_KnownLive(mWeakPtrReturner1)->getWeakPtr()' is neither.}}
++  }
++
++  MOZ_CAN_RUN_SCRIPT void test_refptr_function() {
++    test2(MOZ_KnownLive(mWeakPtrReturner1)->getWeakPtr()); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'MOZ_KnownLive(mWeakPtrReturner1)->getWeakPtr()' is neither.}}
++  }
++
++  MOZ_CAN_RUN_SCRIPT void test_raw_method() {
++    MOZ_KnownLive(mWeakPtrReturner2)->getWeakPtr()->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'MOZ_KnownLive(mWeakPtrReturner2)->getWeakPtr()' is neither.}}
++  }
++
++  MOZ_CAN_RUN_SCRIPT void test_raw_function() {
++    test2(MOZ_KnownLive(mWeakPtrReturner2)->getWeakPtr()); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'MOZ_KnownLive(mWeakPtrReturner2)->getWeakPtr()' is neither.}}
++  }
++};
++
++struct AllowConstMemberArgs {
++  const RefPtr<RefCountedBase> mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mRefCounted->method_test();
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mRefCounted);
++  }
++};
++
++struct AllowConstMemberArgsWithExplicitThis {
++  const RefPtr<RefCountedBase> mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    this->mRefCounted->method_test();
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(this->mRefCounted);
++  }
++};
++
++struct DisallowConstMemberArgsOfMembers {
++  RefPtr<AllowConstMemberArgs> mMember;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mMember->mRefCounted->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mMember->mRefCounted' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mMember->mRefCounted); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mMember->mRefCounted' is neither.}}
++  }
++};
++
++struct DisallowConstNonRefPtrMemberArgs {
++  RefCountedBase* const mRefCounted;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mRefCounted->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mRefCounted); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mRefCounted' is neither.}}
++  }
++};
++
++MOZ_CAN_RUN_SCRIPT void test_temporary_1() {
++  RefPtr<RefCountedBase>(new RefCountedBase())->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_temporary_2() {
++  test_ref(*RefPtr<RefCountedBase>(new RefCountedBase()));
++}
++
++struct WeakSmartPtr {
++  RefCountedBase* member;
++
++  explicit WeakSmartPtr(RefCountedBase* arg) : member(arg) {}
++
++  RefCountedBase* operator->() const {
++    return member;
++  }
++
++  RefCountedBase& operator*() const {
++    return *member;
++  }
++
++  operator RefCountedBase*() const {
++    return member;
++  }
++};
++
++MOZ_CAN_RUN_SCRIPT void test_temporary_3() {
++  WeakSmartPtr(new RefCountedBase())->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'WeakSmartPtr(new RefCountedBase())' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_temporary_4() {
++  test_ref(*WeakSmartPtr(new RefCountedBase())); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  '*WeakSmartPtr(new RefCountedBase())' is neither.}}
++}
++
++MOZ_CAN_RUN_SCRIPT void test_temporary_5() {
++  test2(WeakSmartPtr(new RefCountedBase())); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'WeakSmartPtr(new RefCountedBase())' is neither.}}
++}
++
++
++template<typename T>
++struct TArray {
++  TArray() {
++    mArray[0] = new RefCountedBase();
++  }
++  T& operator[](unsigned int index) { return mArray[index]; }
++  T mArray[1];
++};
++
++struct DisallowRawTArrayElement {
++  TArray<RefCountedBase*> mArray;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mArray[0]->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mArray[0]' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mArray[0]); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mArray[0]' is neither.}}
++  }
++};
++
++struct DisallowRefPtrTArrayElement {
++  TArray<RefPtr<RefCountedBase>> mArray;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mArray[0]->method_test(); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mArray[0]' is neither.}}
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mArray[0]); // expected-error {{arguments must all be strong refs or caller's parameters when calling a function marked as MOZ_CAN_RUN_SCRIPT (including the implicit object argument).  'mArray[0]' is neither.}}
++  }
++};
++
++struct AllowConstexprMembers {
++  static constexpr RefCountedBase* mRefCounted = nullptr;
++  static constexpr RefCountedBase* mRefCounted2 = nullptr;
++  MOZ_CAN_RUN_SCRIPT void foo() {
++    mRefCounted->method_test();
++  }
++  MOZ_CAN_RUN_SCRIPT void bar() {
++    test2(mRefCounted);
++  }
++  MOZ_CAN_RUN_SCRIPT void baz() {
++    test_ref(*mRefCounted);
++  }
++};
++
++MOZ_CAN_RUN_SCRIPT void test_constexpr_1() {
++  AllowConstexprMembers::mRefCounted->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_constexpr_2() {
++  test2(AllowConstexprMembers::mRefCounted);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_constexpr_3() {
++  test_ref(*AllowConstexprMembers::mRefCounted);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_1(RefCountedBase* arg1, RefCountedBase* arg2) {
++  (arg1 ? arg1 : arg2)->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_2(RefCountedBase* arg1, RefCountedBase* arg2) {
++  test2(arg1 ? arg1 : arg2);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_3(RefCountedBase* arg1, RefCountedBase& arg2) {
++  (arg1 ? *arg1 : arg2).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_4(RefCountedBase* arg1, RefCountedBase& arg2) {
++  test_ref(arg1 ? *arg1 : arg2);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_5(RefCountedBase* arg) {
++  RefPtr<RefCountedBase> local = new RefCountedBase();
++  (arg ? arg : local.get())->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_6(RefCountedBase* arg) {
++  RefPtr<RefCountedBase> local = new RefCountedBase();
++  test2(arg ? arg : local.get());
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_7(RefCountedBase* arg) {
++  RefPtr<RefCountedBase> local = new RefCountedBase();
++  (arg ? *arg : *local).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_8(RefCountedBase* arg) {
++  RefPtr<RefCountedBase> local = new RefCountedBase();
++  test_ref(arg ? *arg : *local);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_9(RefCountedBase* arg) {
++  (arg ? arg : AllowConstexprMembers::mRefCounted)->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_10(RefCountedBase* arg) {
++  test2(arg ? arg : AllowConstexprMembers::mRefCounted);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_11(RefCountedBase* arg) {
++  (arg ? *arg : *AllowConstexprMembers::mRefCounted).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_12(RefCountedBase* arg) {
++  test_ref(arg ? *arg : *AllowConstexprMembers::mRefCounted);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_13(RefCountedBase* arg1, RefCountedBase& arg2) {
++  (arg1 ? arg1 : &arg2)->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_44(RefCountedBase* arg1, RefCountedBase& arg2) {
++  test2(arg1 ? arg1 : &arg2);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_13(bool arg) {
++  (arg ?
++   AllowConstexprMembers::mRefCounted :
++   AllowConstexprMembers::mRefCounted2)->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_14(bool arg) {
++  test2(arg ?
++	AllowConstexprMembers::mRefCounted :
++	AllowConstexprMembers::mRefCounted2);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_15(bool arg) {
++  (arg ?
++   *AllowConstexprMembers::mRefCounted :
++   *AllowConstexprMembers::mRefCounted2).method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_ternary_16(bool arg) {
++  test_ref(arg ?
++	   *AllowConstexprMembers::mRefCounted :
++	   *AllowConstexprMembers::mRefCounted2);
++}
++
++MOZ_CAN_RUN_SCRIPT void test_pointer_to_ref_1(RefCountedBase& arg) {
++  (&arg)->method_test();
++}
++
++MOZ_CAN_RUN_SCRIPT void test_pointer_to_ref_2(RefCountedBase& arg) {
++  test2(&arg);
++}
+diff --git a/build/clang-plugin/tests/TestDanglingOnTemporary.cpp b/build/clang-plugin/tests/TestDanglingOnTemporary.cpp
+new file mode 100644
+index 000000000..62a7755ec
+--- /dev/null
++++ b/build/clang-plugin/tests/TestDanglingOnTemporary.cpp
+@@ -0,0 +1,45 @@
++#define MOZ_NO_DANGLING_ON_TEMPORARIES                                              \
++  __attribute__((annotate("moz_no_dangling_on_temporaries")))
++
++class AnnotateConflict {
++  MOZ_NO_DANGLING_ON_TEMPORARIES int *get() && { return nullptr; } // expected-error {{methods annotated with MOZ_NO_DANGLING_ON_TEMPORARIES cannot be && ref-qualified}}
++  MOZ_NO_DANGLING_ON_TEMPORARIES int test() { return 0; } // expected-error {{methods annotated with MOZ_NO_DANGLING_ON_TEMPORARIES must return a pointer}}
++};
++
++class NS_ConvertUTF8toUTF16 {
++public:
++  MOZ_NO_DANGLING_ON_TEMPORARIES int *get() { return nullptr; }
++  operator int*()
++  {
++    return get(); // This should be ignored because the call is implcitly on this
++  }
++};
++
++NS_ConvertUTF8toUTF16 TemporaryFunction() { return NS_ConvertUTF8toUTF16(); }
++
++void UndefinedFunction(int* test);
++
++void NoEscapeFunction(int *test) {}
++
++int *glob; // expected-note {{through the variable declared here}}
++void EscapeFunction1(int *test) { glob = test; } // expected-note {{the raw pointer escapes the function scope here}}
++
++void EscapeFunction2(int *test, int *&escape) { escape = test; } // expected-note {{the raw pointer escapes the function scope here}} \
++                                                                    expected-note {{through the parameter declared here}}
++
++int *EscapeFunction3(int *test) { return test; } // expected-note {{the raw pointer escapes the function scope here}} \
++                                                    expected-note {{through the return value of the function declared here}}
++
++int main() {
++  int *test = TemporaryFunction().get(); // expected-error {{calling `get` on a temporary, potentially allowing use after free of the raw pointer}}
++  int *test2 = NS_ConvertUTF8toUTF16().get(); // expected-error {{calling `get` on a temporary, potentially allowing use after free of the raw pointer}}
++
++  UndefinedFunction(NS_ConvertUTF8toUTF16().get());
++
++  NoEscapeFunction(TemporaryFunction().get());
++  EscapeFunction1(TemporaryFunction().get()); // expected-error {{calling `get` on a temporary, potentially allowing use after free of the raw pointer}}
++
++  int *escape;
++  EscapeFunction2(TemporaryFunction().get(), escape); // expected-error {{calling `get` on a temporary, potentially allowing use after free of the raw pointer}}
++  int *escape2 = EscapeFunction3(TemporaryFunction().get()); // expected-error {{calling `get` on a temporary, potentially allowing use after free of the raw pointer}}
++}
+diff --git a/build/clang-plugin/tests/TestLoadLibraryUsage.cpp b/build/clang-plugin/tests/TestLoadLibraryUsage.cpp
+new file mode 100644
+index 000000000..becab7c65
+--- /dev/null
++++ b/build/clang-plugin/tests/TestLoadLibraryUsage.cpp
+@@ -0,0 +1,20 @@
++#include <windows.h>
++#include "prlink.h"
++
++void Func() {
++  auto h1 = PR_LoadLibrary(nullptr); // expected-error {{Usage of ASCII file functions (such as PR_LoadLibrary) is forbidden.}}
++  auto h2 = PR_LoadLibrary("C:\\Some\\Path");
++  auto h3 = LoadLibraryA(nullptr); // expected-error {{Usage of ASCII file functions (such as LoadLibraryA) is forbidden.}}
++  auto h4 = LoadLibraryA("C:\\Some\\Path");
++  auto h5 = LoadLibraryExA(nullptr, nullptr, 0); // expected-error {{Usage of ASCII file functions (such as LoadLibraryExA) is forbidden.}}
++  auto h6 = LoadLibraryExA("C:\\Some\\Path", nullptr, 0);
++
++#ifndef UNICODE
++  // LoadLibrary is a defnine for LoadLibraryA
++  auto h7 = LoadLibrary(nullptr); // expected-error {{Usage of ASCII file functions (such as LoadLibraryA) is forbidden.}}
++  auto h8 = LoadLibrary("C:\\Some\\Path");
++  // LoadLibraryEx is a define for LoadLibraryExA
++  auto h9 = LoadLibraryEx(nullptr, nullptr, 0); // expected-error {{Usage of ASCII file functions (such as LoadLibraryExA) is forbidden.}}
++  auto h10 = LoadLibraryEx("C:\\Some\\Path", nullptr, 0);
++#endif
++}
+\ No newline at end of file
+diff --git a/build/clang-plugin/tests/TestParamTraitsEnum.cpp b/build/clang-plugin/tests/TestParamTraitsEnum.cpp
+new file mode 100644
+index 000000000..a250250bf
+--- /dev/null
++++ b/build/clang-plugin/tests/TestParamTraitsEnum.cpp
+@@ -0,0 +1,94 @@
++typedef enum {
++  BadFirst,
++  BadSecond,
++  BadThird
++} BadEnum;
++
++typedef enum {
++  NestedFirst,
++  NestedSecond
++} NestedBadEnum;
++
++typedef enum {
++  GoodFirst,
++  GoodSecond,
++  GoodLast
++} GoodEnum;
++
++enum RawEnum {
++  RawFirst,
++  RawLast
++};
++
++enum class ClassEnum {
++  ClassFirst,
++  ClassLast
++};
++
++template <class P> struct ParamTraits;
++
++// Simplified EnumSerializer etc. from IPCMessageUtils.h
++template <typename E, typename EnumValidator>
++struct EnumSerializer {
++  typedef E paramType;
++};
++
++template <typename E,
++          E MinLegal,
++          E HighBound>
++class ContiguousEnumValidator
++{};
++
++template <typename E,
++          E MinLegal,
++          E HighBound>
++struct ContiguousEnumSerializer
++  : EnumSerializer<E,
++                   ContiguousEnumValidator<E, MinLegal, HighBound>>
++{};
++
++// Typical ParamTraits implementation that should be avoided
++template<>
++struct ParamTraits<ClassEnum> // expected-error {{Custom ParamTraits implementation for an enum type}} expected-note {{Please use a helper class for example ContiguousEnumSerializer}}
++{
++  typedef ClassEnum paramType;
++};
++
++template<>
++struct ParamTraits<enum RawEnum> // expected-error {{Custom ParamTraits implementation for an enum type}} expected-note {{Please use a helper class for example ContiguousEnumSerializer}}
++{
++  typedef enum RawEnum paramType;
++};
++
++template<>
++struct ParamTraits<BadEnum> // expected-error {{Custom ParamTraits implementation for an enum type}} expected-note {{Please use a helper class for example ContiguousEnumSerializer}}
++{
++  typedef BadEnum paramType;
++};
++
++// Make sure the analysis catches nested typedefs
++typedef NestedBadEnum NestedDefLevel1;
++typedef NestedDefLevel1 NestedDefLevel2;
++
++template<>
++struct ParamTraits<NestedDefLevel2> // expected-error {{Custom ParamTraits implementation for an enum type}} expected-note {{Please use a helper class for example ContiguousEnumSerializer}}
++{
++  typedef NestedDefLevel2 paramType;
++};
++
++// Make sure a non enum typedef is not accidentally flagged
++typedef int IntTypedef;
++
++template<>
++struct ParamTraits<IntTypedef>
++{
++  typedef IntTypedef paramType;
++};
++
++// Make sure ParamTraits using helper classes are not flagged
++template<>
++struct ParamTraits<GoodEnum>
++: public ContiguousEnumSerializer<GoodEnum,
++                                  GoodEnum::GoodFirst,
++                                  GoodEnum::GoodLast>
++{};
+diff --git a/build/clang-plugin/tests/TestStaticLocalClass.cpp b/build/clang-plugin/tests/TestStaticLocalClass.cpp
+new file mode 100644
+index 000000000..9b29337de
+--- /dev/null
++++ b/build/clang-plugin/tests/TestStaticLocalClass.cpp
+@@ -0,0 +1,54 @@
++#define MOZ_STATIC_LOCAL_CLASS __attribute__((annotate("moz_static_local_class")))
++#include <stddef.h>
++
++struct MOZ_STATIC_LOCAL_CLASS StaticLocal {
++  int i;
++  void *operator new(size_t x) throw() { return 0; }
++  void *operator new(size_t blah, char *buffer) { return buffer; }
++};
++
++template <class T>
++struct MOZ_STATIC_LOCAL_CLASS TemplateClass {
++  T i;
++};
++
++void gobble(void *) { }
++
++void misuseStaticLocalClass(int len) {
++  StaticLocal notValid; // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated in an automatic variable}}
++  StaticLocal alsoNotValid[2]; // expected-error {{variable of type 'StaticLocal [2]' is only valid as a static local}} expected-note {{'StaticLocal [2]' is a static-local type because it is an array of static-local type 'StaticLocal'}} expected-note {{value incorrectly allocated in an automatic variable}}
++  static StaticLocal valid;
++  static StaticLocal alsoValid[2];
++
++  gobble(&notValid);
++  gobble(&valid);
++  gobble(&alsoValid[0]);
++
++  gobble(new StaticLocal); // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(new StaticLocal[10]); // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(new TemplateClass<int>); // expected-error {{variable of type 'TemplateClass<int>' is only valid as a static local}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(len <= 5 ? &valid : new StaticLocal); // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated on the heap}}
++
++  char buffer[sizeof(StaticLocal)];
++  gobble(new (buffer) StaticLocal);
++}
++
++StaticLocal notValid; // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated in a global variable}}
++
++struct RandomClass {
++  StaticLocal nonstaticMember; // expected-note {{'RandomClass' is a static-local type because member 'nonstaticMember' is a static-local type 'StaticLocal'}}
++  static StaticLocal staticMember; // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated in a global variable}}
++};
++
++struct MOZ_STATIC_LOCAL_CLASS RandomStaticLocalClass {
++  StaticLocal nonstaticMember;
++  static StaticLocal staticMember; // expected-error {{variable of type 'StaticLocal' is only valid as a static local}} expected-note {{value incorrectly allocated in a global variable}}
++};
++
++struct BadInherit : StaticLocal {}; // expected-note {{'BadInherit' is a static-local type because it inherits from a static-local type 'StaticLocal'}}
++struct MOZ_STATIC_LOCAL_CLASS GoodInherit : StaticLocal {};
++
++void misuseStaticLocalClassEvenMore(int len) {
++  BadInherit moreInvalid; // expected-error {{variable of type 'BadInherit' is only valid as a static local}} expected-note {{value incorrectly allocated in an automatic variable}}
++  RandomClass evenMoreInvalid; // expected-error {{variable of type 'RandomClass' is only valid as a static local}} expected-note {{value incorrectly allocated in an automatic variable}}
++}
+diff --git a/build/clang-plugin/tests/TestTemporaryClass.cpp b/build/clang-plugin/tests/TestTemporaryClass.cpp
+new file mode 100644
+index 000000000..e7f1e0ee7
+--- /dev/null
++++ b/build/clang-plugin/tests/TestTemporaryClass.cpp
+@@ -0,0 +1,72 @@
++#define MOZ_TEMPORARY_CLASS __attribute__((annotate("moz_temporary_class")))
++#define MOZ_IMPLICIT __attribute__((annotate("moz_implicit")))
++
++#include <stddef.h>
++
++struct MOZ_TEMPORARY_CLASS Temporary {
++  int i;
++  Temporary() {}
++  MOZ_IMPLICIT Temporary(int a) {}
++  Temporary(int a, int b) {}
++  void *operator new(size_t x) throw() { return 0; }
++  void *operator new(size_t blah, char *buffer) { return buffer; }
++};
++
++template <class T>
++struct MOZ_TEMPORARY_CLASS TemplateClass {
++  T i;
++};
++
++void gobble(void *) { }
++
++void gobbleref(const Temporary&) { }
++
++template <class T>
++void gobbleanyref(const T&) { }
++
++void misuseNonTemporaryClass(int len) {
++  // All of these should error.
++  Temporary invalid; // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated in an automatic variable}}
++  Temporary alsoInvalid[2]; // expected-error {{variable of type 'Temporary [2]' is only valid as a temporary}} expected-note {{value incorrectly allocated in an automatic variable}} expected-note {{'Temporary [2]' is a temporary type because it is an array of temporary type 'Temporary'}}
++  static Temporary invalidStatic; // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated in a global variable}}
++  static Temporary alsoInvalidStatic[2]; // expected-error {{variable of type 'Temporary [2]' is only valid as a temporary}} expected-note {{value incorrectly allocated in a global variable}} expected-note {{'Temporary [2]' is a temporary type because it is an array of temporary type 'Temporary'}}
++
++  gobble(&invalid);
++  gobble(&invalidStatic);
++  gobble(&alsoInvalid[0]);
++
++  // All of these should be fine.
++  gobbleref(Temporary());
++  gobbleref(Temporary(10, 20));
++  gobbleref(Temporary(10));
++  gobbleref(10);
++  gobbleanyref(TemplateClass<int>());
++
++  // All of these should error.
++  gobble(new Temporary); // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(new Temporary[10]); // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(new TemplateClass<int>); // expected-error {{variable of type 'TemplateClass<int>' is only valid as a temporary}} expected-note {{value incorrectly allocated on the heap}}
++  gobble(len <= 5 ? &invalid : new Temporary); // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated on the heap}}
++
++  // Placement new is odd, but okay.
++  char buffer[sizeof(Temporary)];
++  gobble(new (buffer) Temporary);
++}
++
++void defaultArg(const Temporary& arg = Temporary()) { // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated in an automatic variable}}
++}
++
++// Can't be a global, this should error.
++Temporary invalidStatic; // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated in a global variable}}
++
++struct RandomClass {
++  Temporary nonstaticMember; // This is okay if RandomClass is only used as a temporary.
++  static Temporary staticMember; // expected-error {{variable of type 'Temporary' is only valid as a temporary}} expected-note {{value incorrectly allocated in a global variable}}
++};
++
++struct BadInherit : Temporary {};
++
++void useStuffWrongly() {
++  gobbleanyref(BadInherit());
++  gobbleanyref(RandomClass());
++}
+diff --git a/build/clang-plugin/tests/TestTrivialDtor.cpp b/build/clang-plugin/tests/TestTrivialDtor.cpp
+new file mode 100644
+index 000000000..c9be816d5
+--- /dev/null
++++ b/build/clang-plugin/tests/TestTrivialDtor.cpp
+@@ -0,0 +1,53 @@
++#define MOZ_TRIVIAL_DTOR __attribute__((annotate("moz_trivial_dtor")))
++
++struct MOZ_TRIVIAL_DTOR EmptyClass{};
++
++template <class T>
++struct MOZ_TRIVIAL_DTOR TemplateEmptyClass{};
++
++struct MOZ_TRIVIAL_DTOR NonEmptyClass {
++  void *m;
++};
++
++template <class T>
++struct MOZ_TRIVIAL_DTOR TemplateNonEmptyClass {
++  T* m;
++};
++
++struct MOZ_TRIVIAL_DTOR BadUserDefinedDtor { // expected-error {{class 'BadUserDefinedDtor' must have a trivial destructor}}
++  ~BadUserDefinedDtor() {}
++};
++
++struct MOZ_TRIVIAL_DTOR BadVirtualDtor { // expected-error {{class 'BadVirtualDtor' must have a trivial destructor}}
++  virtual ~BadVirtualDtor() {}
++};
++
++struct MOZ_TRIVIAL_DTOR OkVirtualMember {
++  virtual void f();
++};
++
++void foo();
++struct MOZ_TRIVIAL_DTOR BadNonEmptyCtorDtor { // expected-error {{class 'BadNonEmptyCtorDtor' must have a trivial destructor}}
++  BadNonEmptyCtorDtor() { foo(); }
++  ~BadNonEmptyCtorDtor() { foo(); }
++};
++
++struct NonTrivialDtor {
++  ~NonTrivialDtor() { foo(); }
++};
++
++struct VirtualMember {
++  virtual void f();
++};
++
++struct MOZ_TRIVIAL_DTOR BadNonTrivialDtorInBase : NonTrivialDtor { // expected-error {{class 'BadNonTrivialDtorInBase' must have a trivial destructor}}
++};
++
++struct MOZ_TRIVIAL_DTOR BadNonTrivialDtorInMember { // expected-error {{class 'BadNonTrivialDtorInMember' must have a trivial destructor}}
++  NonTrivialDtor m;
++};
++
++struct MOZ_TRIVIAL_DTOR OkVirtualMemberInMember {
++  VirtualMember m;
++};
++

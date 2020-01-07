@@ -1,0 +1,3246 @@
+diff --git a/build/clang-plugin/ArithmeticArgChecker.cpp b/build/clang-plugin/ArithmeticArgChecker.cpp
+index 12c61a7..0042961 100644
+--- a/build/clang-plugin/ArithmeticArgChecker.cpp
++++ b/build/clang-plugin/ArithmeticArgChecker.cpp
+@@ -5,7 +5,7 @@
+ #include "ArithmeticArgChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void ArithmeticArgChecker::registerMatchers(MatchFinder* AstMatcher) {
++void ArithmeticArgChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+       callExpr(allOf(hasDeclaration(noArithmeticExprInArgs()),
+                      anyOf(hasDescendant(
+@@ -45,14 +45,16 @@ void ArithmeticArgChecker::registerMatchers(MatchFinder* AstMatcher) {
+       this);
+ }
+ 
+-void ArithmeticArgChecker::check(
+-    const MatchFinder::MatchResult &Result) {
+-  const char* Error = "cannot pass an arithmetic expression of built-in types to %0";
++void ArithmeticArgChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error =
++      "cannot pass an arithmetic expression of built-in types to %0";
+   const Expr *Expression = Result.Nodes.getNodeAs<Expr>("node");
+   if (const CallExpr *Call = Result.Nodes.getNodeAs<CallExpr>("call")) {
+-    diag(Expression->getLocStart(), Error, DiagnosticIDs::Error) << Call->getDirectCallee();
++    diag(Expression->getBeginLoc(), Error, DiagnosticIDs::Error)
++        << Call->getDirectCallee();
+   } else if (const CXXConstructExpr *Ctr =
+                  Result.Nodes.getNodeAs<CXXConstructExpr>("call")) {
+-    diag(Expression->getLocStart(), Error, DiagnosticIDs::Error) << Ctr->getConstructor();
++    diag(Expression->getBeginLoc(), Error, DiagnosticIDs::Error)
++        << Ctr->getConstructor();
+   }
+ }
+diff --git a/build/clang-plugin/ArithmeticArgChecker.h b/build/clang-plugin/ArithmeticArgChecker.h
+index ac22f56..62165b7 100644
+--- a/build/clang-plugin/ArithmeticArgChecker.h
++++ b/build/clang-plugin/ArithmeticArgChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class ArithmeticArgChecker : public BaseCheck {
+ public:
+-  ArithmeticArgChecker(StringRef CheckName,
+-                       ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  ArithmeticArgChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/AssertAssignmentChecker.cpp b/build/clang-plugin/AssertAssignmentChecker.cpp
+index 4f76d48..467de28 100644
+--- a/build/clang-plugin/AssertAssignmentChecker.cpp
++++ b/build/clang-plugin/AssertAssignmentChecker.cpp
+@@ -5,19 +5,16 @@
+ #include "AssertAssignmentChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void AssertAssignmentChecker::registerMatchers(MatchFinder* AstMatcher) {
++void AssertAssignmentChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+-      callExpr(isAssertAssignmentTestFunc()).bind("funcCall"),
+-      this);
++      callExpr(isAssertAssignmentTestFunc()).bind("funcCall"), this);
+ }
+ 
+-void AssertAssignmentChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void AssertAssignmentChecker::check(const MatchFinder::MatchResult &Result) {
+   const CallExpr *FuncCall = Result.Nodes.getNodeAs<CallExpr>("funcCall");
+ 
+   if (FuncCall && hasSideEffectAssignment(FuncCall)) {
+-    diag(FuncCall->getLocStart(),
+-         "Forbidden assignment in assert expression",
++    diag(FuncCall->getBeginLoc(), "Forbidden assignment in assert expression",
+          DiagnosticIDs::Error);
+   }
+ }
+diff --git a/build/clang-plugin/AssertAssignmentChecker.h b/build/clang-plugin/AssertAssignmentChecker.h
+index 6d95f55..5e47b62 100644
+--- a/build/clang-plugin/AssertAssignmentChecker.h
++++ b/build/clang-plugin/AssertAssignmentChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class AssertAssignmentChecker : public BaseCheck {
+ public:
+-  AssertAssignmentChecker(StringRef CheckName,
+-                          ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  AssertAssignmentChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/BaseCheck.h b/build/clang-plugin/BaseCheck.h
+index 56c81e0..867b82d 100644
+--- a/build/clang-plugin/BaseCheck.h
++++ b/build/clang-plugin/BaseCheck.h
+@@ -10,9 +10,9 @@ typedef MozContext ContextType;
+ 
+ class BaseCheck : public MatchFinder::MatchCallback {
+ public:
+-  BaseCheck(StringRef CheckName, ContextType* Context) {}
++  BaseCheck(StringRef CheckName, ContextType *Context) {}
+   virtual void registerMatchers(MatchFinder *Finder) {}
+-  virtual void registerPPCallbacks(CompilerInstance& CI) {}
++  virtual void registerPPCallbacks(CompilerInstance &CI) {}
+   virtual void check(const MatchFinder::MatchResult &Result) {}
+   DiagnosticBuilder diag(SourceLocation Loc, StringRef Description,
+                          DiagnosticIDs::Level Level = DiagnosticIDs::Warning) {
+@@ -28,7 +28,7 @@ private:
+   }
+ 
+ private:
+-  ASTContext* Context;
++  ASTContext *Context;
+ };
+ 
+ #endif
+diff --git a/build/clang-plugin/Checks.inc b/build/clang-plugin/Checks.inc
+index 2d90cbd..2435bad 100644
+--- a/build/clang-plugin/Checks.inc
++++ b/build/clang-plugin/Checks.inc
+@@ -6,9 +6,14 @@
+ 
+ CHECK(ArithmeticArgChecker, "arithmetic-argument")
+ CHECK(AssertAssignmentChecker, "assignment-in-assert")
++CHECK(CanRunScriptChecker, "can-run-script")
++CHECK(DanglingOnTemporaryChecker, "dangling-on-temporary")
+ CHECK(ExplicitImplicitChecker, "implicit-constructor")
+ CHECK(ExplicitOperatorBoolChecker, "explicit-operator-bool")
+ CHECK(KungFuDeathGripChecker, "kungfu-death-grip")
++#ifdef _WIN32
++CHECK(LoadLibraryUsageChecker, "load-library-usage")
++#endif
+ CHECK(MustOverrideChecker, "must-override")
+ CHECK(MustReturnFromCallerChecker, "must-return-from-caller")
+ CHECK(MustUseChecker, "must-use")
+@@ -23,8 +28,10 @@ CHECK(NonMemMovableTemplateArgChecker, "non-memmovable-template-arg")
+ CHECK(NonParamInsideFunctionDeclChecker, "non-memmovable-template-arg")
+ CHECK(OverrideBaseCallChecker, "override-base-call")
+ CHECK(OverrideBaseCallUsageChecker, "override-base-call-usage")
++CHECK(ParamTraitsEnumChecker, "paramtraits-enum")
+ CHECK(RefCountedCopyConstructorChecker, "refcounted-copy-constructor")
+ CHECK(RefCountedInsideLambdaChecker, "refcounted-inside-lambda")
+ CHECK(ScopeChecker, "scope")
+ CHECK(SprintfLiteralChecker, "sprintf-literal")
+ CHECK(TrivialCtorDtorChecker, "trivial-constructor-destructor")
++CHECK(TrivialDtorChecker, "trivial-destructor")
+diff --git a/build/clang-plugin/ChecksIncludes.inc b/build/clang-plugin/ChecksIncludes.inc
+index 56aa20c..767881f 100644
+--- a/build/clang-plugin/ChecksIncludes.inc
++++ b/build/clang-plugin/ChecksIncludes.inc
+@@ -7,8 +7,13 @@
+ 
+ #include "ArithmeticArgChecker.h"
+ #include "AssertAssignmentChecker.h"
++#include "CanRunScriptChecker.h"
++#include "DanglingOnTemporaryChecker.h"
+ #include "ExplicitImplicitChecker.h"
+ #include "ExplicitOperatorBoolChecker.h"
++#ifdef _WIN32
++#include "LoadLibraryUsageChecker.h"
++#endif
+ #include "KungFuDeathGripChecker.h"
+ #include "MustOverrideChecker.h"
+ #include "MustReturnFromCallerChecker.h"
+@@ -24,9 +29,11 @@
+ #include "NonParamInsideFunctionDeclChecker.h"
+ #include "OverrideBaseCallChecker.h"
+ #include "OverrideBaseCallUsageChecker.h"
++#include "ParamTraitsEnumChecker.h"
+ #include "RefCountedCopyConstructorChecker.h"
+ #include "RefCountedInsideLambdaChecker.h"
+ #include "ScopeChecker.h"
+ #include "SprintfLiteralChecker.h"
+ #include "TrivialCtorDtorChecker.h"
++#include "TrivialDtorChecker.h"
+ 
+diff --git a/build/clang-plugin/CustomMatchers.h b/build/clang-plugin/CustomMatchers.h
+index 3206da3..bfec66d 100644
+--- a/build/clang-plugin/CustomMatchers.h
++++ b/build/clang-plugin/CustomMatchers.h
+@@ -14,26 +14,71 @@ namespace ast_matchers {
+ /// This matcher will match any function declaration that is declared as a heap
+ /// allocator.
+ AST_MATCHER(FunctionDecl, heapAllocator) {
+-  return hasCustomAnnotation(&Node, "moz_heap_allocator");
++  return hasCustomAttribute<moz_heap_allocator>(&Node);
+ }
+ 
+ /// This matcher will match any declaration that is marked as not accepting
+ /// arithmetic expressions in its arguments.
+ AST_MATCHER(Decl, noArithmeticExprInArgs) {
+-  return hasCustomAnnotation(&Node, "moz_no_arith_expr_in_arg");
++  return hasCustomAttribute<moz_no_arith_expr_in_arg>(&Node);
+ }
+ 
+ /// This matcher will match any C++ class that is marked as having a trivial
+ /// constructor and destructor.
+ AST_MATCHER(CXXRecordDecl, hasTrivialCtorDtor) {
+-  return hasCustomAnnotation(&Node, "moz_trivial_ctor_dtor");
++  return hasCustomAttribute<moz_trivial_ctor_dtor>(&Node);
++}
++
++/// This matcher will match any C++ class that is marked as having a trivial
++/// destructor.
++AST_MATCHER(CXXRecordDecl, hasTrivialDtor) {
++  return hasCustomAttribute<moz_trivial_dtor>(&Node);
++}
++
++AST_MATCHER(CXXConstructExpr, allowsTemporary) {
++  return hasCustomAttribute<moz_allow_temporary>(Node.getConstructor());
++}
++
++/// This matcher will match lvalue-ref-qualified methods.
++AST_MATCHER(CXXMethodDecl, isLValueRefQualified) {
++  return Node.getRefQualifier() == RQ_LValue;
++}
++
++/// This matcher will match rvalue-ref-qualified methods.
++AST_MATCHER(CXXMethodDecl, isRValueRefQualified) {
++  return Node.getRefQualifier() == RQ_RValue;
++}
++
++AST_POLYMORPHIC_MATCHER(isFirstParty,
++                        AST_POLYMORPHIC_SUPPORTED_TYPES(Decl, Stmt)) {
++  return !inThirdPartyPath(&Node, &Finder->getASTContext()) &&
++         !ASTIsInSystemHeader(Finder->getASTContext(), Node);
++}
++
++/// This matcher will match temporary expressions.
++/// We need this matcher for compatibility with clang 3.* (clang 4 and above
++/// insert a MaterializeTemporaryExpr everywhere).
++AST_MATCHER(Expr, isTemporary) {
++  return Node.isRValue() || Node.isXValue() ||
++         isa<MaterializeTemporaryExpr>(&Node);
++}
++
++/// This matcher will match any method declaration that is marked as returning
++/// a pointer deleted by the destructor of the class.
++AST_MATCHER(CXXMethodDecl, noDanglingOnTemporaries) {
++  return hasCustomAttribute<moz_no_dangling_on_temporaries>(&Node);
+ }
+ 
+ /// This matcher will match any function declaration that is marked to prohibit
+ /// calling AddRef or Release on its return value.
+ AST_MATCHER(FunctionDecl, hasNoAddRefReleaseOnReturnAttr) {
+-  return hasCustomAnnotation(&Node,
+-                                         "moz_no_addref_release_on_return");
++  return hasCustomAttribute<moz_no_addref_release_on_return>(&Node);
++}
++
++/// This matcher will match any function declaration that is marked as being
++/// allowed to run script.
++AST_MATCHER(FunctionDecl, hasCanRunScriptAnnotation) {
++  return hasCustomAttribute<moz_can_run_script>(&Node);
+ }
+ 
+ /// This matcher will match all arithmetic binary operators.
+@@ -57,6 +102,12 @@ AST_MATCHER(UnaryOperator, unaryArithmeticOperator) {
+          OpCode == UO_Not;
+ }
+ 
++/// This matcher will match the unary dereference operator
++AST_MATCHER(UnaryOperator, unaryDereferenceOperator) {
++  UnaryOperatorKind OpCode = Node.getOpcode();
++  return OpCode == UO_Deref;
++}
++
+ /// This matcher will match == and != binary operators.
+ AST_MATCHER(BinaryOperator, binaryEqualityOperator) {
+   BinaryOperatorKind OpCode = Node.getOpcode();
+@@ -75,23 +126,19 @@ AST_MATCHER(QualType, isFloat) { return Node->isRealFloatingType(); }
+ /// This matcher will match locations in system headers.  This is adopted from
+ /// isExpansionInSystemHeader in newer clangs, but modified in order to work
+ /// with old clangs that we use on infra.
+-AST_MATCHER(BinaryOperator, isInSystemHeader) {
++AST_POLYMORPHIC_MATCHER(isInSystemHeader,                                      \
++                        AST_POLYMORPHIC_SUPPORTED_TYPES(Decl, Stmt)) {
+   return ASTIsInSystemHeader(Finder->getASTContext(), Node);
+ }
+ 
+ /// This matcher will match a list of files.  These files contain
+ /// known NaN-testing expressions which we would like to whitelist.
+ AST_MATCHER(BinaryOperator, isInWhitelistForNaNExpr) {
+-  const char* whitelist[] = {
+-    "SkScalar.h",
+-    "json_writer.cpp",
+-    "State.cpp"
+-  };
++  const char *whitelist[] = {"SkScalar.h", "json_writer.cpp", "State.cpp"};
+ 
+   SourceLocation Loc = Node.getOperatorLoc();
+-  auto &SourceManager = Finder->getASTContext().getSourceManager();
+-  SmallString<1024> FileName = SourceManager.getFilename(Loc);
+-
++  StringRef FileName =
++      getFilename(Finder->getASTContext().getSourceManager(), Loc);
+   for (auto itr = std::begin(whitelist); itr != std::end(whitelist); itr++) {
+     if (llvm::sys::path::rbegin(FileName)->equals(*itr)) {
+       return true;
+@@ -112,15 +159,19 @@ AST_MATCHER(MemberExpr, isAddRefOrRelease) {
+   return false;
+ }
+ 
+-/// This matcher will select classes which are refcounted.
++/// This matcher will select classes which are refcounted AND have an mRefCnt
++/// member.
+ AST_MATCHER(CXXRecordDecl, hasRefCntMember) {
+   return isClassRefCounted(&Node) && getClassRefCntMember(&Node);
+ }
+ 
++/// This matcher will select classes which are refcounted.
++AST_MATCHER(CXXRecordDecl, isRefCounted) { return isClassRefCounted(&Node); }
++
+ AST_MATCHER(QualType, hasVTable) { return typeHasVTable(Node); }
+ 
+ AST_MATCHER(CXXRecordDecl, hasNeedsNoVTableTypeAttr) {
+-  return hasCustomAnnotation(&Node, "moz_needs_no_vtable_type");
++  return hasCustomAttribute<moz_needs_no_vtable_type>(&Node);
+ }
+ 
+ /// This matcher will select classes which are non-memmovable
+@@ -130,12 +181,12 @@ AST_MATCHER(QualType, isNonMemMovable) {
+ 
+ /// This matcher will select classes which require a memmovable template arg
+ AST_MATCHER(CXXRecordDecl, needsMemMovableTemplateArg) {
+-  return hasCustomAnnotation(&Node, "moz_needs_memmovable_type");
++  return hasCustomAttribute<moz_needs_memmovable_type>(&Node);
+ }
+ 
+ /// This matcher will select classes which require all members to be memmovable
+ AST_MATCHER(CXXRecordDecl, needsMemMovableMembers) {
+-  return hasCustomAnnotation(&Node, "moz_needs_memmovable_members");
++  return hasCustomAttribute<moz_needs_memmovable_members>(&Node);
+ }
+ 
+ AST_MATCHER(CXXConstructorDecl, isInterestingImplicitCtor) {
+@@ -145,20 +196,52 @@ AST_MATCHER(CXXConstructorDecl, isInterestingImplicitCtor) {
+       !ASTIsInSystemHeader(Declaration->getASTContext(), *Declaration) &&
+       // Skip ignored namespaces and paths
+       !isInIgnoredNamespaceForImplicitCtor(Declaration) &&
+-      !isIgnoredPathForImplicitCtor(Declaration) &&
++      !inThirdPartyPath(Declaration) &&
+       // We only want Converting constructors
+       Declaration->isConvertingConstructor(false) &&
+       // We don't want copy of move constructors, as those are allowed to be
+       // implicit
+       !Declaration->isCopyOrMoveConstructor() &&
++      // We don't want inheriting constructors, since using declarations can't
++      // have attributes
++      !Declaration->isInheritingConstructor() &&
+       // We don't want deleted constructors.
+       !Declaration->isDeleted();
+ }
+ 
++AST_MATCHER_P(Expr, ignoreTrivials, internal::Matcher<Expr>, InnerMatcher) {
++  return InnerMatcher.matches(*IgnoreTrivials(&Node), Finder, Builder);
++}
++
++// Takes two matchers: the first one is a condition; the second is a matcher to be
++// applied once we are done unwrapping trivials.  While the condition does not match
++// and we're looking at a trivial, will keep unwrapping the trivial and trying again.
++// Once the condition matches, we will go ahead and unwrap all trivials and apply the
++// inner matcher to the result.
++//
++// The expected use here is if we want to condition a match on some typecheck but
++// apply the match to only non-trivials, because there are trivials (e.g. casts) that
++// can change types.
++AST_MATCHER_P2(Expr, ignoreTrivialsConditional,
++               internal::Matcher<Expr>, Condition,
++               internal::Matcher<Expr>, InnerMatcher) {
++  const Expr *node = &Node;
++  while (true) {
++    if (Condition.matches(*node, Finder, Builder)) {
++      return InnerMatcher.matches(*IgnoreTrivials(node), Finder, Builder);
++    }
++    const Expr *newNode = MaybeSkipOneTrivial(node);
++    if (newNode == node) {
++      return false;
++    }
++    node = newNode;
++  }
++}
++
+ // We can't call this "isImplicit" since it clashes with an existing matcher in
+ // clang.
+ AST_MATCHER(CXXConstructorDecl, isMarkedImplicit) {
+-  return hasCustomAnnotation(&Node, "moz_implicit");
++  return hasCustomAttribute<moz_implicit>(&Node);
+ }
+ 
+ AST_MATCHER(CXXRecordDecl, isConcreteClass) { return !Node.isAbstract(); }
+@@ -166,7 +249,7 @@ AST_MATCHER(CXXRecordDecl, isConcreteClass) { return !Node.isAbstract(); }
+ AST_MATCHER(QualType, autoNonAutoableType) {
+   if (const AutoType *T = Node->getContainedAutoType()) {
+     if (const CXXRecordDecl *Rec = T->getAsCXXRecordDecl()) {
+-      return hasCustomAnnotation(Rec, "moz_non_autoable");
++      return hasCustomAttribute<moz_non_autoable>(Rec);
+     }
+   }
+   return false;
+@@ -184,9 +267,8 @@ AST_MATCHER(CallExpr, isAssertAssignmentTestFunc) {
+   static const std::string AssertName = "MOZ_AssertAssignmentTest";
+   const FunctionDecl *Method = Node.getDirectCallee();
+ 
+-  return Method
+-      && Method->getDeclName().isIdentifier()
+-      && Method->getName() == AssertName;
++  return Method && Method->getDeclName().isIdentifier() &&
++         Method->getName() == AssertName;
+ }
+ 
+ AST_MATCHER(CallExpr, isSnprintfLikeFunc) {
+@@ -203,15 +285,25 @@ AST_MATCHER(CallExpr, isSnprintfLikeFunc) {
+     return false;
+   }
+ 
+-  return !isIgnoredPathForSprintfLiteral(&Node, Finder->getASTContext().getSourceManager());
++  return !inThirdPartyPath(Node.getBeginLoc(),
++                           Finder->getASTContext().getSourceManager()) &&
++         !isIgnoredPathForSprintfLiteral(
++             &Node, Finder->getASTContext().getSourceManager());
+ }
+ 
+-AST_MATCHER(CXXRecordDecl, isLambdaDecl) {
+-  return Node.isLambda();
+-}
++AST_MATCHER(CXXRecordDecl, isLambdaDecl) { return Node.isLambda(); }
++
++AST_MATCHER(QualType, isRefPtr) { return typeIsRefPtr(Node); }
++
++AST_MATCHER(QualType, isSmartPtrToRefCounted) {
++  auto *D = getNonTemplateSpecializedCXXRecordDecl(Node);
++  if (!D) {
++    return false;
++  }
++
++  D = D->getCanonicalDecl();
+ 
+-AST_MATCHER(QualType, isRefPtr) {
+-  return typeIsRefPtr(Node);
++  return D && hasCustomAttribute<moz_is_smartptr_to_refcounted>(D);
+ }
+ 
+ AST_MATCHER(CXXRecordDecl, hasBaseClasses) {
+@@ -223,8 +315,7 @@ AST_MATCHER(CXXRecordDecl, hasBaseClasses) {
+ 
+ AST_MATCHER(CXXMethodDecl, isRequiredBaseMethod) {
+   const CXXMethodDecl *Decl = Node.getCanonicalDecl();
+-  return Decl
+-      && hasCustomAnnotation(Decl, "moz_required_base_method");
++  return Decl && hasCustomAttribute<moz_required_base_method>(Decl);
+ }
+ 
+ AST_MATCHER(CXXMethodDecl, isNonVirtual) {
+@@ -234,9 +325,17 @@ AST_MATCHER(CXXMethodDecl, isNonVirtual) {
+ 
+ AST_MATCHER(FunctionDecl, isMozMustReturnFromCaller) {
+   const FunctionDecl *Decl = Node.getCanonicalDecl();
+-  return Decl && hasCustomAnnotation(Decl, "moz_must_return_from_caller");
+-}
++  return Decl && hasCustomAttribute<moz_must_return_from_caller_if_this_is_arg>(Decl);
+ }
++
++/// This matcher will select default args which have nullptr as the value.
++AST_MATCHER(CXXDefaultArgExpr, isNullDefaultArg) {
++  const Expr *Expr = Node.getExpr();
++  return Expr && Expr->isNullPointerConstant(Finder->getASTContext(),
++                                             Expr::NPC_NeverValueDependent);
+ }
+ 
++} // namespace ast_matchers
++} // namespace clang
++
+ #endif
+diff --git a/build/clang-plugin/CustomTypeAnnotation.cpp b/build/clang-plugin/CustomTypeAnnotation.cpp
+index b61538e..1291b39 100644
+--- a/build/clang-plugin/CustomTypeAnnotation.cpp
++++ b/build/clang-plugin/CustomTypeAnnotation.cpp
+@@ -6,29 +6,28 @@
+ #include "Utils.h"
+ 
+ CustomTypeAnnotation StackClass =
+-    CustomTypeAnnotation("moz_stack_class", "stack");
++    CustomTypeAnnotation(moz_stack_class, "stack");
+ CustomTypeAnnotation GlobalClass =
+-    CustomTypeAnnotation("moz_global_class", "global");
++    CustomTypeAnnotation(moz_global_class, "global");
+ CustomTypeAnnotation NonHeapClass =
+-    CustomTypeAnnotation("moz_nonheap_class", "non-heap");
+-CustomTypeAnnotation HeapClass =
+-    CustomTypeAnnotation("moz_heap_class", "heap");
++    CustomTypeAnnotation(moz_nonheap_class, "non-heap");
++CustomTypeAnnotation HeapClass = CustomTypeAnnotation(moz_heap_class, "heap");
+ CustomTypeAnnotation NonTemporaryClass =
+-    CustomTypeAnnotation("moz_non_temporary_class", "non-temporary");
+-CustomTypeAnnotation NonParam =
+-    CustomTypeAnnotation("moz_non_param", "non-param");
++    CustomTypeAnnotation(moz_non_temporary_class, "non-temporary");
++CustomTypeAnnotation TemporaryClass =
++    CustomTypeAnnotation(moz_temporary_class, "temporary");
++CustomTypeAnnotation StaticLocalClass =
++    CustomTypeAnnotation(moz_static_local_class, "static-local");
+ 
+-void CustomTypeAnnotation::dumpAnnotationReason(BaseCheck &Check,
+-                                                QualType T,
++void CustomTypeAnnotation::dumpAnnotationReason(BaseCheck &Check, QualType T,
+                                                 SourceLocation Loc) {
+-  const char* Inherits =
++  const char *Inherits =
+       "%1 is a %0 type because it inherits from a %0 type %2";
+-  const char* Member =
+-      "%1 is a %0 type because member %2 is a %0 type %3";
+-  const char* Array =
+-      "%1 is a %0 type because it is an array of %0 type %2";
+-  const char* Templ =
++  const char *Member = "%1 is a %0 type because member %2 is a %0 type %3";
++  const char *Array = "%1 is a %0 type because it is an array of %0 type %2";
++  const char *Templ =
+       "%1 is a %0 type because it has a template argument %0 type %2";
++  const char *Implicit = "%1 is a %0 type because %2";
+ 
+   AnnotationReason Reason = directAnnotationReason(T);
+   for (;;) {
+@@ -41,7 +40,7 @@ void CustomTypeAnnotation::dumpAnnotationReason(BaseCheck &Check,
+       assert(Declaration && "This type should be a C++ class");
+ 
+       Check.diag(Declaration->getLocation(), Inherits, DiagnosticIDs::Note)
+-        << Pretty << T << Reason.Type;
++          << Pretty << T << Reason.Type;
+       break;
+     }
+     case RK_Field:
+@@ -53,9 +52,17 @@ void CustomTypeAnnotation::dumpAnnotationReason(BaseCheck &Check,
+       assert(Declaration && "This type should be a C++ class");
+ 
+       Check.diag(Declaration->getLocation(), Templ, DiagnosticIDs::Note)
+-        << Pretty << T << Reason.Type;
++          << Pretty << T << Reason.Type;
+       break;
+     }
++    case RK_Implicit: {
++      const TagDecl *Declaration = T->getAsTagDecl();
++      assert(Declaration && "This type should be a TagDecl");
++
++      Check.diag(Declaration->getLocation(), Implicit, DiagnosticIDs::Note)
++          << Pretty << T << Reason.ImplicitReason;
++      return;
++    }
+     default:
+       // FIXME (bug 1203263): note the original annotation.
+       return;
+@@ -66,22 +73,19 @@ void CustomTypeAnnotation::dumpAnnotationReason(BaseCheck &Check,
+   }
+ }
+ 
+-bool CustomTypeAnnotation::hasLiteralAnnotation(QualType T) const {
+-#if CLANG_VERSION_FULL >= 306
+-  if (const TagDecl *D = T->getAsTagDecl()) {
+-#else
+-  if (const CXXRecordDecl *D = T->getAsCXXRecordDecl()) {
+-#endif
+-    return hasFakeAnnotation(D) || hasCustomAnnotation(D, Spelling);
+-  }
+-  return false;
+-}
+-
+ CustomTypeAnnotation::AnnotationReason
+ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+-  if (hasLiteralAnnotation(T)) {
+-    AnnotationReason Reason = {T, RK_Direct, nullptr};
+-    return Reason;
++  if (const TagDecl *D = T->getAsTagDecl()) {
++    if (hasCustomAttribute(D, Attribute)) {
++      AnnotationReason Reason = {T, RK_Direct, nullptr, ""};
++      return Reason;
++    }
++
++    std::string ImplAnnotReason = getImplicitReason(D);
++    if (!ImplAnnotReason.empty()) {
++      AnnotationReason Reason = {T, RK_Implicit, nullptr, ImplAnnotReason};
++      return Reason;
++    }
+   }
+ 
+   // Check if we have a cached answer
+@@ -95,7 +99,7 @@ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+   if (const clang::ArrayType *Array = T->getAsArrayTypeUnsafe()) {
+     if (hasEffectiveAnnotation(Array->getElementType())) {
+       AnnotationReason Reason = {Array->getElementType(), RK_ArrayElement,
+-                                 nullptr};
++                                 nullptr, ""};
+       Cache[Key] = Reason;
+       return Reason;
+     }
+@@ -108,7 +112,7 @@ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+ 
+       for (const CXXBaseSpecifier &Base : Declaration->bases()) {
+         if (hasEffectiveAnnotation(Base.getType())) {
+-          AnnotationReason Reason = {Base.getType(), RK_BaseClass, nullptr};
++          AnnotationReason Reason = {Base.getType(), RK_BaseClass, nullptr, ""};
+           Cache[Key] = Reason;
+           return Reason;
+         }
+@@ -117,7 +121,7 @@ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+       // Recurse into members
+       for (const FieldDecl *Field : Declaration->fields()) {
+         if (hasEffectiveAnnotation(Field->getType())) {
+-          AnnotationReason Reason = {Field->getType(), RK_Field, Field};
++          AnnotationReason Reason = {Field->getType(), RK_Field, Field, ""};
+           Cache[Key] = Reason;
+           return Reason;
+         }
+@@ -125,8 +129,8 @@ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+ 
+       // Recurse into template arguments if the annotation
+       // MOZ_INHERIT_TYPE_ANNOTATIONS_FROM_TEMPLATE_ARGS is present
+-      if (hasCustomAnnotation(
+-              Declaration, "moz_inherit_type_annotations_from_template_args")) {
++      if (hasCustomAttribute<moz_inherit_type_annotations_from_template_args>(
++              Declaration)) {
+         const ClassTemplateSpecializationDecl *Spec =
+             dyn_cast<ClassTemplateSpecializationDecl>(Declaration);
+         if (Spec) {
+@@ -142,7 +146,7 @@ CustomTypeAnnotation::directAnnotationReason(QualType T) {
+     }
+   }
+ 
+-  AnnotationReason Reason = {QualType(), RK_None, nullptr};
++  AnnotationReason Reason = {QualType(), RK_None, nullptr, ""};
+   Cache[Key] = Reason;
+   return Reason;
+ }
+@@ -153,7 +157,7 @@ CustomTypeAnnotation::tmplArgAnnotationReason(ArrayRef<TemplateArgument> Args) {
+     if (Arg.getKind() == TemplateArgument::Type) {
+       QualType Type = Arg.getAsType();
+       if (hasEffectiveAnnotation(Type)) {
+-        AnnotationReason Reason = {Type, RK_TemplateInherited, nullptr};
++        AnnotationReason Reason = {Type, RK_TemplateInherited, nullptr, ""};
+         return Reason;
+       }
+     } else if (Arg.getKind() == TemplateArgument::Pack) {
+@@ -164,6 +168,6 @@ CustomTypeAnnotation::tmplArgAnnotationReason(ArrayRef<TemplateArgument> Args) {
+     }
+   }
+ 
+-  AnnotationReason Reason = {QualType(), RK_None, nullptr};
++  AnnotationReason Reason = {QualType(), RK_None, nullptr, ""};
+   return Reason;
+ }
+diff --git a/build/clang-plugin/CustomTypeAnnotation.h b/build/clang-plugin/CustomTypeAnnotation.h
+index aa80def..1fec12f 100644
+--- a/build/clang-plugin/CustomTypeAnnotation.h
++++ b/build/clang-plugin/CustomTypeAnnotation.h
+@@ -5,6 +5,7 @@
+ #ifndef CustomTypeAnnotation_h__
+ #define CustomTypeAnnotation_h__
+ 
++#include "CustomAttributes.h"
+ #include "plugin.h"
+ 
+ class CustomTypeAnnotation {
+@@ -15,23 +16,25 @@ class CustomTypeAnnotation {
+     RK_BaseClass,
+     RK_Field,
+     RK_TemplateInherited,
++    RK_Implicit,
+   };
+   struct AnnotationReason {
+     QualType Type;
+     ReasonKind Kind;
+     const FieldDecl *Field;
++    std::string ImplicitReason;
+ 
+     bool valid() const { return Kind != RK_None; }
+   };
+   typedef DenseMap<void *, AnnotationReason> ReasonCache;
+ 
+-  const char *Spelling;
++  CustomAttributes Attribute;
+   const char *Pretty;
+   ReasonCache Cache;
+ 
+ public:
+-  CustomTypeAnnotation(const char *Spelling, const char *Pretty)
+-      : Spelling(Spelling), Pretty(Pretty){};
++  CustomTypeAnnotation(CustomAttributes Attribute, const char *Pretty)
++      : Attribute(Attribute), Pretty(Pretty){};
+ 
+   virtual ~CustomTypeAnnotation() {}
+ 
+@@ -39,12 +42,10 @@ public:
+   bool hasEffectiveAnnotation(QualType T) {
+     return directAnnotationReason(T).valid();
+   }
+-  void dumpAnnotationReason(BaseCheck &Check, QualType T,
+-                            SourceLocation Loc);
++  void dumpAnnotationReason(BaseCheck &Check, QualType T, SourceLocation Loc);
+ 
+-  void reportErrorIfPresent(BaseCheck &Check, QualType T,
+-                            SourceLocation Loc, const char* Error,
+-                            const char* Note) {
++  void reportErrorIfPresent(BaseCheck &Check, QualType T, SourceLocation Loc,
++                            const char *Error, const char *Note) {
+     if (hasEffectiveAnnotation(T)) {
+       Check.diag(Loc, Error, DiagnosticIDs::Error) << T;
+       Check.diag(Loc, Note, DiagnosticIDs::Note);
+@@ -53,13 +54,14 @@ public:
+   }
+ 
+ private:
+-  bool hasLiteralAnnotation(QualType T) const;
+   AnnotationReason directAnnotationReason(QualType T);
+   AnnotationReason tmplArgAnnotationReason(ArrayRef<TemplateArgument> Args);
+ 
+ protected:
+-  // Allow subclasses to apply annotations to external code:
+-  virtual bool hasFakeAnnotation(const TagDecl *D) const { return false; }
++  // Allow subclasses to apply annotations for reasons other than a direct
++  // annotation. A non-empty string return value means that the object D is
++  // annotated, and should contain the reason why.
++  virtual std::string getImplicitReason(const TagDecl *D) const { return ""; }
+ };
+ 
+ extern CustomTypeAnnotation StackClass;
+@@ -67,6 +69,7 @@ extern CustomTypeAnnotation GlobalClass;
+ extern CustomTypeAnnotation NonHeapClass;
+ extern CustomTypeAnnotation HeapClass;
+ extern CustomTypeAnnotation NonTemporaryClass;
+-extern CustomTypeAnnotation NonParam;
++extern CustomTypeAnnotation TemporaryClass;
++extern CustomTypeAnnotation StaticLocalClass;
+ 
+ #endif
+diff --git a/build/clang-plugin/DiagnosticsMatcher.cpp b/build/clang-plugin/DiagnosticsMatcher.cpp
+index 0a077b5..329a7a7 100644
+--- a/build/clang-plugin/DiagnosticsMatcher.cpp
++++ b/build/clang-plugin/DiagnosticsMatcher.cpp
+@@ -4,14 +4,10 @@
+ 
+ #include "DiagnosticsMatcher.h"
+ 
+-DiagnosticsMatcher::DiagnosticsMatcher(CompilerInstance& CI) :
+-#define CHECK(cls, name) cls ## _(name),
+-#include "Checks.inc"
+-#undef CHECK
+-  AstMatcher()
+-{
+-#define CHECK(cls, name) cls ## _.registerMatchers(&AstMatcher); \
+-                         cls ## _.registerPPCallbacks(CI);
++DiagnosticsMatcher::DiagnosticsMatcher(CompilerInstance &CI) {
++#define CHECK(cls, name)                                                       \
++  cls##_.registerMatchers(&AstMatcher);                                        \
++  cls##_.registerPPCallbacks(CI);
+ #include "Checks.inc"
+ #undef CHECK
+ }
+diff --git a/build/clang-plugin/DiagnosticsMatcher.h b/build/clang-plugin/DiagnosticsMatcher.h
+index efd90b9..58dd0ef 100644
+--- a/build/clang-plugin/DiagnosticsMatcher.h
++++ b/build/clang-plugin/DiagnosticsMatcher.h
+@@ -9,12 +9,12 @@
+ 
+ class DiagnosticsMatcher {
+ public:
+-  DiagnosticsMatcher(CompilerInstance& CI);
++  DiagnosticsMatcher(CompilerInstance &CI);
+ 
+   ASTConsumerPtr makeASTConsumer() { return AstMatcher.newASTConsumer(); }
+ 
+ private:
+-#define CHECK(cls, name) cls cls ## _;
++#define CHECK(cls, name) cls cls##_ { name };
+ #include "Checks.inc"
+ #undef CHECK
+   MatchFinder AstMatcher;
+diff --git a/build/clang-plugin/ExplicitImplicitChecker.cpp b/build/clang-plugin/ExplicitImplicitChecker.cpp
+index d4dba3f..e0620f5 100644
+--- a/build/clang-plugin/ExplicitImplicitChecker.cpp
++++ b/build/clang-plugin/ExplicitImplicitChecker.cpp
+@@ -5,17 +5,17 @@
+ #include "ExplicitImplicitChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void ExplicitImplicitChecker::registerMatchers(MatchFinder* AstMatcher) {
+-  AstMatcher->addMatcher(cxxConstructorDecl(isInterestingImplicitCtor(),
+-                                            ofClass(allOf(isConcreteClass(),
+-                                                          decl().bind("class"))),
+-                                            unless(isMarkedImplicit()))
+-                            .bind("ctor"),
+-                        this);
++void ExplicitImplicitChecker::registerMatchers(MatchFinder *AstMatcher) {
++  AstMatcher->addMatcher(
++      cxxConstructorDecl(
++          isInterestingImplicitCtor(),
++          ofClass(allOf(isConcreteClass(), decl().bind("class"))),
++          unless(isMarkedImplicit()))
++          .bind("ctor"),
++      this);
+ }
+ 
+-void ExplicitImplicitChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void ExplicitImplicitChecker::check(const MatchFinder::MatchResult &Result) {
+   // We've already checked everything in the matcher, so we just have to report
+   // the error.
+ 
+@@ -24,8 +24,13 @@ void ExplicitImplicitChecker::check(
+   const CXXRecordDecl *Declaration =
+       Result.Nodes.getNodeAs<CXXRecordDecl>("class");
+ 
++  FixItHint FixItHint =
++      FixItHint::CreateInsertion(Ctor->getLocation(), "explicit ");
+   diag(Ctor->getLocation(), "bad implicit conversion constructor for %0",
+-       DiagnosticIDs::Error) << Declaration->getDeclName();
+-  diag(Ctor->getLocation(), "consider adding the explicit keyword to the constructor",
+-       DiagnosticIDs::Note);
++       DiagnosticIDs::Error)
++      << Declaration->getDeclName();
++  diag(Ctor->getLocation(),
++       "consider adding the explicit keyword to the constructor",
++       DiagnosticIDs::Note)
++      << FixItHint;
+ }
+diff --git a/build/clang-plugin/ExplicitImplicitChecker.h b/build/clang-plugin/ExplicitImplicitChecker.h
+index 8f19778..f1591c9 100644
+--- a/build/clang-plugin/ExplicitImplicitChecker.h
++++ b/build/clang-plugin/ExplicitImplicitChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class ExplicitImplicitChecker : public BaseCheck {
+ public:
+-  ExplicitImplicitChecker(StringRef CheckName,
+-                          ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  ExplicitImplicitChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/ExplicitOperatorBoolChecker.cpp b/build/clang-plugin/ExplicitOperatorBoolChecker.cpp
+index 0677628..d712227 100644
+--- a/build/clang-plugin/ExplicitOperatorBoolChecker.cpp
++++ b/build/clang-plugin/ExplicitOperatorBoolChecker.cpp
+@@ -5,7 +5,7 @@
+ #include "ExplicitOperatorBoolChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void ExplicitOperatorBoolChecker::registerMatchers(MatchFinder* AstMatcher) {
++void ExplicitOperatorBoolChecker::registerMatchers(MatchFinder *AstMatcher) {
+   // Older clang versions such as the ones used on the infra recognize these
+   // conversions as 'operator _Bool', but newer clang versions recognize these
+   // as 'operator bool'.
+@@ -21,13 +21,15 @@ void ExplicitOperatorBoolChecker::check(
+       Result.Nodes.getNodeAs<CXXConversionDecl>("node");
+   const CXXRecordDecl *Clazz = Method->getParent();
+ 
+-  if (!Method->isExplicitSpecified() &&
+-      !hasCustomAnnotation(Method, "moz_implicit") &&
++  if (!Method->isExplicit() &&
++      !hasCustomAttribute<moz_implicit>(Method) &&
+       !ASTIsInSystemHeader(Method->getASTContext(), *Method) &&
+       isInterestingDeclForImplicitConversion(Method)) {
+-    diag(Method->getLocStart(), "bad implicit conversion operator for %0",
+-         DiagnosticIDs::Error) << Clazz;
+-    diag(Method->getLocStart(), "consider adding the explicit keyword to %0",
+-         DiagnosticIDs::Note) << "'operator bool'";
++    diag(Method->getBeginLoc(), "bad implicit conversion operator for %0",
++         DiagnosticIDs::Error)
++        << Clazz;
++    diag(Method->getBeginLoc(), "consider adding the explicit keyword to %0",
++         DiagnosticIDs::Note)
++        << "'operator bool'";
+   }
+ }
+diff --git a/build/clang-plugin/ExplicitOperatorBoolChecker.h b/build/clang-plugin/ExplicitOperatorBoolChecker.h
+index d93b0ae..90909e6 100644
+--- a/build/clang-plugin/ExplicitOperatorBoolChecker.h
++++ b/build/clang-plugin/ExplicitOperatorBoolChecker.h
+@@ -11,8 +11,8 @@ class ExplicitOperatorBoolChecker : public BaseCheck {
+ public:
+   ExplicitOperatorBoolChecker(StringRef CheckName,
+                               ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/KungFuDeathGripChecker.cpp b/build/clang-plugin/KungFuDeathGripChecker.cpp
+index f6271b0..ff7479e 100644
+--- a/build/clang-plugin/KungFuDeathGripChecker.cpp
++++ b/build/clang-plugin/KungFuDeathGripChecker.cpp
+@@ -5,20 +5,22 @@
+ #include "KungFuDeathGripChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void KungFuDeathGripChecker::registerMatchers(MatchFinder* AstMatcher) {
+-  AstMatcher->addMatcher(varDecl(hasType(isRefPtr())).bind("decl"),
++void KungFuDeathGripChecker::registerMatchers(MatchFinder *AstMatcher) {
++  AstMatcher->addMatcher(varDecl(allOf(hasType(isRefPtr()),
++                                       hasLocalStorage(),
++                                       hasInitializer(anything())))
++                             .bind("decl"),
+                          this);
+ }
+ 
+-void KungFuDeathGripChecker::check(
+-    const MatchFinder::MatchResult &Result) {
+-  const char* Error =
+-    "Unused \"kungFuDeathGrip\" %0 objects constructed from %1 are prohibited";
+-  const char* Note =
+-    "Please switch all accesses to this %0 to go through '%1', or explicitly pass '%1' to `mozilla::Unused`";
++void KungFuDeathGripChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error = "Unused \"kungFuDeathGrip\" %0 objects constructed from "
++                      "%1 are prohibited";
++  const char *Note = "Please switch all accesses to this %0 to go through "
++                     "'%1', or explicitly pass '%1' to `mozilla::Unused`";
+ 
+   const VarDecl *D = Result.Nodes.getNodeAs<VarDecl>("decl");
+-  if (D->isReferenced() || !D->hasLocalStorage() || !D->hasInit()) {
++  if (D->isReferenced()) {
+     return;
+   }
+ 
+@@ -46,6 +48,12 @@ void KungFuDeathGripChecker::check(
+     E = IgnoreTrivials(CE->getArg(0));
+   }
+ 
++  // It is possible that the QualType doesn't point to a type yet so we are
++  // not interested.
++  if (E->getType().isNull()) {
++    return;
++  }
++
+   // We allow taking a kungFuDeathGrip of `this` because it cannot change
+   // beneath us, so calling directly through `this` is OK. This is the same
+   // for local variable declarations.
+@@ -64,17 +72,18 @@ void KungFuDeathGripChecker::check(
+   const TagDecl *TD = E->getType()->getAsTagDecl();
+   if (TD && TD->getIdentifier()) {
+     static const char *IgnoreTypes[] = {
+-      "already_AddRefed",
+-      "nsGetServiceByCID",
+-      "nsGetServiceByCIDWithError",
+-      "nsGetServiceByContractID",
+-      "nsGetServiceByContractIDWithError",
+-      "nsCreateInstanceByCID",
+-      "nsCreateInstanceByContractID",
+-      "nsCreateInstanceFromFactory",
++        "already_AddRefed",
++        "nsGetServiceByCID",
++        "nsGetServiceByCIDWithError",
++        "nsGetServiceByContractID",
++        "nsGetServiceByContractIDWithError",
++        "nsCreateInstanceByCID",
++        "nsCreateInstanceByContractID",
++        "nsCreateInstanceFromFactory",
+     };
+ 
+-    for (uint32_t i = 0; i < sizeof(IgnoreTypes) / sizeof(IgnoreTypes[0]); ++i) {
++    for (uint32_t i = 0; i < sizeof(IgnoreTypes) / sizeof(IgnoreTypes[0]);
++         ++i) {
+       if (TD->getName() == IgnoreTypes[i]) {
+         return;
+       }
+@@ -85,7 +94,7 @@ void KungFuDeathGripChecker::check(
+   const char *ErrThing;
+   const char *NoteThing;
+   if (isa<MemberExpr>(E)) {
+-    ErrThing  = "members";
++    ErrThing = "members";
+     NoteThing = "member";
+   } else {
+     ErrThing = "temporary values";
+@@ -93,6 +102,8 @@ void KungFuDeathGripChecker::check(
+   }
+ 
+   // We cannot provide the note if we don't have an initializer
+-  diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D->getType() << ErrThing;
+-  diag(E->getLocStart(), Note, DiagnosticIDs::Note) << NoteThing << getNameChecked(D);
++  diag(D->getBeginLoc(), Error, DiagnosticIDs::Error)
++      << D->getType() << ErrThing;
++  diag(E->getBeginLoc(), Note, DiagnosticIDs::Note)
++      << NoteThing << getNameChecked(D);
+ }
+diff --git a/build/clang-plugin/KungFuDeathGripChecker.h b/build/clang-plugin/KungFuDeathGripChecker.h
+index 8b84886..6bb2c76 100644
+--- a/build/clang-plugin/KungFuDeathGripChecker.h
++++ b/build/clang-plugin/KungFuDeathGripChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class KungFuDeathGripChecker : public BaseCheck {
+ public:
+-  KungFuDeathGripChecker(StringRef CheckName,
+-                         ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  KungFuDeathGripChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/MemMoveAnnotation.h b/build/clang-plugin/MemMoveAnnotation.h
+index 498ef9d..b423383 100644
+--- a/build/clang-plugin/MemMoveAnnotation.h
++++ b/build/clang-plugin/MemMoveAnnotation.h
+@@ -5,54 +5,73 @@
+ #ifndef MemMoveAnnotation_h__
+ #define MemMoveAnnotation_h__
+ 
+-#include "CustomTypeAnnotation.h"
+ #include "CustomMatchers.h"
++#include "CustomTypeAnnotation.h"
+ #include "Utils.h"
+ 
++#include <unordered_set>
++
+ class MemMoveAnnotation final : public CustomTypeAnnotation {
+ public:
+   MemMoveAnnotation()
+-      : CustomTypeAnnotation("moz_non_memmovable", "non-memmove()able") {}
++      : CustomTypeAnnotation(moz_non_memmovable, "non-memmove()able") {}
+ 
+   virtual ~MemMoveAnnotation() {}
+ 
+ protected:
+-  bool hasFakeAnnotation(const TagDecl *D) const override {
++  std::string getImplicitReason(const TagDecl *D) const override {
+     // Annotate everything in ::std, with a few exceptions; see bug
+     // 1201314 for discussion.
+     if (getDeclarationNamespace(D) == "std") {
+       // This doesn't check that it's really ::std::pair and not
+       // ::std::something_else::pair, but should be good enough.
+       StringRef Name = getNameChecked(D);
+-      if (Name == "pair" ||
+-          Name == "atomic" ||
+-          // libstdc++ specific names
+-          Name == "__atomic_base" ||
+-          Name == "atomic_bool" ||
+-          // MSVCRT specific names
+-          Name == "_Atomic_impl" ||
+-          Name == "_Atomic_base" ||
+-          Name == "_Atomic_bool" ||
+-          Name == "_Atomic_char" ||
+-          Name == "_Atomic_schar" ||
+-          Name == "_Atomic_uchar" ||
+-          Name == "_Atomic_char16_t" ||
+-          Name == "_Atomic_char32_t" ||
+-          Name == "_Atomic_wchar_t" ||
+-          Name == "_Atomic_short" ||
+-          Name == "_Atomic_ushort" ||
+-          Name == "_Atomic_int" ||
+-          Name == "_Atomic_uint" ||
+-          Name == "_Atomic_long" ||
+-          Name == "_Atomic_ulong" ||
+-          Name == "_Atomic_llong" ||
+-          Name == "_Atomic_ullong" ||
+-          Name == "_Atomic_address") {
+-        return false;
++      if (isNameExcepted(Name.data())) {
++        return "";
+       }
+-      return true;
++      return "it is an stl-provided type not guaranteed to be memmove-able";
+     }
+-    return false;
++    return "";
++  }
++
++private:
++  bool isNameExcepted(const char *Name) const {
++    static std::unordered_set<std::string> NamesSet = {
++        {"pair"},
++        {"atomic"},
++        // libstdc++ specific names
++        {"__atomic_base"},
++        {"atomic_bool"},
++        {"__cxx_atomic_impl"},
++        {"__cxx_atomic_base_impl"},
++        {"__pair_base"},
++        // MSVCRT specific names
++        {"_Atomic_impl"},
++        {"_Atomic_base"},
++        {"_Atomic_bool"},
++        {"_Atomic_char"},
++        {"_Atomic_schar"},
++        {"_Atomic_uchar"},
++        {"_Atomic_char16_t"},
++        {"_Atomic_char32_t"},
++        {"_Atomic_wchar_t"},
++        {"_Atomic_short"},
++        {"_Atomic_ushort"},
++        {"_Atomic_int"},
++        {"_Atomic_uint"},
++        {"_Atomic_long"},
++        {"_Atomic_ulong"},
++        {"_Atomic_llong"},
++        {"_Atomic_ullong"},
++        {"_Atomic_address"},
++        // MSVCRT 2019
++        {"_Atomic_integral"},
++        {"_Atomic_integral_facade"},
++        {"_Atomic_padded"},
++        {"_Atomic_pointer"},
++        {"_Atomic_storage"}};
++
++    return NamesSet.find(Name) != NamesSet.end();
+   }
+ };
+ 
+diff --git a/build/clang-plugin/MozCheckAction.cpp b/build/clang-plugin/MozCheckAction.cpp
+index c2e2a28..6ec8c92 100644
+--- a/build/clang-plugin/MozCheckAction.cpp
++++ b/build/clang-plugin/MozCheckAction.cpp
+@@ -2,16 +2,16 @@
+  * License, v. 2.0. If a copy of the MPL was not distributed with this
+  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+-#include "plugin.h"
+ #include "DiagnosticsMatcher.h"
++#include "plugin.h"
+ #include "clang/Frontend/FrontendPluginRegistry.h"
+ 
+ class MozCheckAction : public PluginASTAction {
+ public:
+   ASTConsumerPtr CreateASTConsumer(CompilerInstance &CI,
+                                    StringRef FileName) override {
+-    void* Buffer = CI.getASTContext().Allocate<DiagnosticsMatcher>();
+-    auto Matcher = new(Buffer) DiagnosticsMatcher(CI);
++    void *Buffer = CI.getASTContext().Allocate<DiagnosticsMatcher>();
++    auto Matcher = new (Buffer) DiagnosticsMatcher(CI);
+     return Matcher->makeASTConsumer();
+   }
+ 
+@@ -23,3 +23,5 @@ public:
+ 
+ static FrontendPluginRegistry::Add<MozCheckAction> X("moz-check",
+                                                      "check moz action");
++
++DenseMap<StringRef, bool> InThirdPartyPathCache;
+diff --git a/build/clang-plugin/MozillaTidyModule.cpp b/build/clang-plugin/MozillaTidyModule.cpp
+index d47b09a..dfe392c 100644
+--- a/build/clang-plugin/MozillaTidyModule.cpp
++++ b/build/clang-plugin/MozillaTidyModule.cpp
+@@ -24,8 +24,8 @@ public:
+ };
+ 
+ // Register the MozillaTidyModule using this statically initialized variable.
+-static ClangTidyModuleRegistry::Add<MozillaModule> X("mozilla-module",
+-                                                     "Adds Mozilla lint checks.");
++static ClangTidyModuleRegistry::Add<MozillaModule>
++    X("mozilla-module", "Adds Mozilla lint checks.");
+ 
+ } // namespace tidy
+ } // namespace clang
+diff --git a/build/clang-plugin/MustOverrideChecker.cpp b/build/clang-plugin/MustOverrideChecker.cpp
+index ef49969..b19ae94 100644
+--- a/build/clang-plugin/MustOverrideChecker.cpp
++++ b/build/clang-plugin/MustOverrideChecker.cpp
+@@ -5,23 +5,22 @@
+ #include "MustOverrideChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void MustOverrideChecker::registerMatchers(MatchFinder* AstMatcher) {
++void MustOverrideChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(cxxRecordDecl(isDefinition()).bind("class"), this);
+ }
+ 
+-void MustOverrideChecker::registerPPCallbacks(CompilerInstance& CI) {
++void MustOverrideChecker::registerPPCallbacks(CompilerInstance &CI) {
+   this->CI = &CI;
+ }
+ 
+-void MustOverrideChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void MustOverrideChecker::check(const MatchFinder::MatchResult &Result) {
+   auto D = Result.Nodes.getNodeAs<CXXRecordDecl>("class");
+ 
+   // Look through all of our immediate bases to find methods that need to be
+   // overridden
+   typedef std::vector<CXXMethodDecl *> OverridesVector;
+   OverridesVector MustOverrides;
+-  for (const auto& Base : D->bases()) {
++  for (const auto &Base : D->bases()) {
+     // The base is either a class (CXXRecordDecl) or it's a templated class...
+     CXXRecordDecl *Parent = Base.getType()
+                                 .getDesugaredType(D->getASTContext())
+@@ -34,15 +33,15 @@ void MustOverrideChecker::check(
+       continue;
+     }
+     Parent = Parent->getDefinition();
+-    for (const auto& M : Parent->methods()) {
+-      if (hasCustomAnnotation(M, "moz_must_override"))
++    for (const auto &M : Parent->methods()) {
++      if (hasCustomAttribute<moz_must_override>(M))
+         MustOverrides.push_back(M);
+     }
+   }
+ 
+-  for (auto& O : MustOverrides) {
++  for (auto &O : MustOverrides) {
+     bool Overridden = false;
+-    for (const auto& M : D->methods()) {
++    for (const auto &M : D->methods()) {
+       // The way that Clang checks if a method M overrides its parent method
+       // is if the method has the same name but would not overload.
+       if (getNameChecked(M) == getNameChecked(O) &&
+@@ -52,9 +51,8 @@ void MustOverrideChecker::check(
+       }
+     }
+     if (!Overridden) {
+-      diag(D->getLocation(), "%0 must override %1",
+-           DiagnosticIDs::Error) << D->getDeclName()
+-                                 << O->getDeclName();
++      diag(D->getLocation(), "%0 must override %1", DiagnosticIDs::Error)
++          << D->getDeclName() << O->getDeclName();
+       diag(O->getLocation(), "function to override is here",
+            DiagnosticIDs::Note);
+     }
+diff --git a/build/clang-plugin/MustOverrideChecker.h b/build/clang-plugin/MustOverrideChecker.h
+index a988c62..ed1835e 100644
+--- a/build/clang-plugin/MustOverrideChecker.h
++++ b/build/clang-plugin/MustOverrideChecker.h
+@@ -9,15 +9,14 @@
+ 
+ class MustOverrideChecker : public BaseCheck {
+ public:
+-  MustOverrideChecker(StringRef CheckName,
+-                      ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context), CI(nullptr) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
+-  void registerPPCallbacks(CompilerInstance& CI) override;
++  MustOverrideChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context), CI(nullptr) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
++  void registerPPCallbacks(CompilerInstance &CI) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ 
+ private:
+-  const CompilerInstance* CI;
++  const CompilerInstance *CI;
+ };
+ 
+ #endif
+diff --git a/build/clang-plugin/MustReturnFromCallerChecker.cpp b/build/clang-plugin/MustReturnFromCallerChecker.cpp
+index d43204a..c364c3d 100644
+--- a/build/clang-plugin/MustReturnFromCallerChecker.cpp
++++ b/build/clang-plugin/MustReturnFromCallerChecker.cpp
+@@ -5,20 +5,24 @@
+ #include "MustReturnFromCallerChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void MustReturnFromCallerChecker::registerMatchers(MatchFinder* AstMatcher) {
+-  // Look for a call to a MOZ_MUST_RETURN_FROM_CALLER function
+-  AstMatcher->addMatcher(callExpr(callee(functionDecl(isMozMustReturnFromCaller())),
+-                                  anyOf(hasAncestor(lambdaExpr().bind("containing-lambda")),
+-                                        hasAncestor(functionDecl().bind("containing-func")))).bind("call"),
+-                         this);
++void MustReturnFromCallerChecker::registerMatchers(MatchFinder *AstMatcher) {
++  // Look for a call to a MOZ_MUST_RETURN_FROM_CALLER member
++  AstMatcher->addMatcher(
++      cxxMemberCallExpr(
++              on(declRefExpr(to(parmVarDecl()))),
++              callee(functionDecl(isMozMustReturnFromCaller())),
++              anyOf(hasAncestor(lambdaExpr().bind("containing-lambda")),
++                    hasAncestor(functionDecl().bind("containing-func"))))
++          .bind("call"),
++      this);
+ }
+ 
+ void MustReturnFromCallerChecker::check(
+-    const MatchFinder::MatchResult& Result) {
++    const MatchFinder::MatchResult &Result) {
+   const auto *ContainingLambda =
+-    Result.Nodes.getNodeAs<LambdaExpr>("containing-lambda");
++      Result.Nodes.getNodeAs<LambdaExpr>("containing-lambda");
+   const auto *ContainingFunc =
+-    Result.Nodes.getNodeAs<FunctionDecl>("containing-func");
++      Result.Nodes.getNodeAs<FunctionDecl>("containing-func");
+   const auto *Call = Result.Nodes.getNodeAs<CallExpr>("call");
+ 
+   Stmt *Body = nullptr;
+@@ -34,7 +38,7 @@ void MustReturnFromCallerChecker::check(
+   // Generate the CFG for the enclosing function or decl.
+   CFG::BuildOptions Options;
+   std::unique_ptr<CFG> TheCFG =
+-    CFG::buildCFG(nullptr, Body, Result.Context, Options);
++      CFG::buildCFG(nullptr, Body, Result.Context, Options);
+   if (!TheCFG) {
+     return;
+   }
+@@ -46,16 +50,15 @@ void MustReturnFromCallerChecker::check(
+   assert(Block && "This statement should be within the CFG!");
+ 
+   if (!immediatelyReturns(Block, Result.Context, CallIndex + 1)) {
+-    diag(Call->getLocStart(),
++    diag(Call->getBeginLoc(),
+          "You must immediately return after calling this function",
+          DiagnosticIDs::Error);
+   }
+ }
+ 
+-bool
+-MustReturnFromCallerChecker::immediatelyReturns(RecurseGuard<const CFGBlock *> Block,
+-                                                ASTContext *TheContext,
+-                                                size_t FromIdx) {
++bool MustReturnFromCallerChecker::immediatelyReturns(
++    RecurseGuard<const CFGBlock *> Block, ASTContext *TheContext,
++    size_t FromIdx) {
+   if (Block.isRepeat()) {
+     return false;
+   }
+@@ -73,8 +76,7 @@ MustReturnFromCallerChecker::immediatelyReturns(RecurseGuard<const CFGBlock *> B
+     // It is also, of course, OK to look at a ReturnStmt.
+     if (isa<ReturnStmt>(AfterTrivials) ||
+         isa<CXXConstructExpr>(AfterTrivials) ||
+-        isa<DeclRefExpr>(AfterTrivials) ||
+-        isa<MemberExpr>(AfterTrivials)) {
++        isa<DeclRefExpr>(AfterTrivials) || isa<MemberExpr>(AfterTrivials)) {
+       continue;
+     }
+ 
+@@ -83,7 +85,8 @@ MustReturnFromCallerChecker::immediatelyReturns(RecurseGuard<const CFGBlock *> B
+     // to be MOZ_MAY_CALL_AFTER_MUST_RETURN (like operator T*()).
+     if (auto CE = dyn_cast<CallExpr>(AfterTrivials)) {
+       auto Callee = CE->getDirectCallee();
+-      if (Callee && hasCustomAnnotation(Callee, "moz_may_call_after_must_return")) {
++      if (Callee &&
++          hasCustomAttribute<moz_may_call_after_must_return>(Callee)) {
+         continue;
+       }
+ 
+diff --git a/build/clang-plugin/MustReturnFromCallerChecker.h b/build/clang-plugin/MustReturnFromCallerChecker.h
+index 11dbdc5..a4d90e1 100644
+--- a/build/clang-plugin/MustReturnFromCallerChecker.h
++++ b/build/clang-plugin/MustReturnFromCallerChecker.h
+@@ -5,22 +5,22 @@
+ #ifndef MustReturnFromCallerChecker_h__
+ #define MustReturnFromCallerChecker_h__
+ 
+-#include "plugin.h"
+-#include "Utils.h"
+ #include "RecurseGuard.h"
+ #include "StmtToBlockMap.h"
++#include "Utils.h"
++#include "plugin.h"
+ 
+ class MustReturnFromCallerChecker : public BaseCheck {
+ public:
+   MustReturnFromCallerChecker(StringRef CheckName,
+                               ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
++
+ private:
+   bool immediatelyReturns(RecurseGuard<const CFGBlock *> Block,
+-                          ASTContext *TheContext,
+-                          size_t FromIdx);
++                          ASTContext *TheContext, size_t FromIdx);
+ };
+ 
+ #endif
+diff --git a/build/clang-plugin/MustUseChecker.cpp b/build/clang-plugin/MustUseChecker.cpp
+index 58f7712..92acb7f 100644
+--- a/build/clang-plugin/MustUseChecker.cpp
++++ b/build/clang-plugin/MustUseChecker.cpp
+@@ -7,25 +7,25 @@
+ #include "CustomTypeAnnotation.h"
+ 
+ CustomTypeAnnotation MustUse =
+-    CustomTypeAnnotation("moz_must_use_type", "must-use");
++    CustomTypeAnnotation(moz_must_use_type, "must-use");
+ 
+-void MustUseChecker::registerMatchers(MatchFinder* AstMatcher) {
++void MustUseChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(switchCase().bind("switchcase"), this);
+   AstMatcher->addMatcher(compoundStmt().bind("compound"), this);
+   AstMatcher->addMatcher(ifStmt().bind("if"), this);
+   AstMatcher->addMatcher(whileStmt().bind("while"), this);
+   AstMatcher->addMatcher(doStmt().bind("do"), this);
+   AstMatcher->addMatcher(forStmt().bind("for"), this);
+-  AstMatcher->addMatcher(binaryOperator(binaryCommaOperator()).bind("bin"), this);
++  AstMatcher->addMatcher(binaryOperator(binaryCommaOperator()).bind("bin"),
++                         this);
+ }
+ 
+-void MustUseChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void MustUseChecker::check(const MatchFinder::MatchResult &Result) {
+   if (auto SC = Result.Nodes.getNodeAs<SwitchCase>("switchcase")) {
+     handleUnusedExprResult(SC->getSubStmt());
+   }
+   if (auto C = Result.Nodes.getNodeAs<CompoundStmt>("compound")) {
+-    for (const auto& S : C->body()) {
++    for (const auto &S : C->body()) {
+       handleUnusedExprResult(S);
+     }
+   }
+@@ -55,9 +55,10 @@ void MustUseChecker::handleUnusedExprResult(const Stmt *Statement) {
+     E = E->IgnoreImplicit(); // Ignore ExprWithCleanup etc. implicit wrappers
+     QualType T = E->getType();
+     if (MustUse.hasEffectiveAnnotation(T) && !isIgnoredExprForMustUse(E)) {
+-      diag(E->getLocStart(), "Unused value of must-use type %0",
+-           DiagnosticIDs::Error) << T;
+-      MustUse.dumpAnnotationReason(*this, T, E->getLocStart());
++      diag(E->getBeginLoc(), "Unused value of must-use type %0",
++           DiagnosticIDs::Error)
++          << T;
++      MustUse.dumpAnnotationReason(*this, T, E->getBeginLoc());
+     }
+   }
+ }
+diff --git a/build/clang-plugin/MustUseChecker.h b/build/clang-plugin/MustUseChecker.h
+index ea96979..42f1b1a 100644
+--- a/build/clang-plugin/MustUseChecker.h
++++ b/build/clang-plugin/MustUseChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class MustUseChecker : public BaseCheck {
+ public:
+-  MustUseChecker(StringRef CheckName,
+-                 ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  MustUseChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ 
+ private:
+diff --git a/build/clang-plugin/NaNExprChecker.cpp b/build/clang-plugin/NaNExprChecker.cpp
+index 860dc85..6532443 100644
+--- a/build/clang-plugin/NaNExprChecker.cpp
++++ b/build/clang-plugin/NaNExprChecker.cpp
+@@ -5,35 +5,34 @@
+ #include "NaNExprChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NaNExprChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NaNExprChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+       binaryOperator(
+           allOf(binaryEqualityOperator(),
+-                hasLHS(hasIgnoringParenImpCasts(
+-                    declRefExpr(hasType(qualType((isFloat())))).bind("lhs"))),
+-                hasRHS(hasIgnoringParenImpCasts(
+-                    declRefExpr(hasType(qualType((isFloat())))).bind("rhs"))),
++                hasLHS(has(ignoringParenImpCasts(
++                    declRefExpr(hasType(qualType((isFloat())))).bind("lhs")))),
++                hasRHS(has(ignoringParenImpCasts(
++                    declRefExpr(hasType(qualType((isFloat())))).bind("rhs")))),
+                 unless(anyOf(isInSystemHeader(), isInWhitelistForNaNExpr()))))
+           .bind("node"),
+       this);
+ }
+ 
+-void NaNExprChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void NaNExprChecker::check(const MatchFinder::MatchResult &Result) {
+   if (!Result.Context->getLangOpts().CPlusPlus) {
+     // mozilla::IsNaN is not usable in C, so there is no point in issuing these
+     // warnings.
+     return;
+   }
+ 
+-  const BinaryOperator *Expression = Result.Nodes.getNodeAs<BinaryOperator>(
+-    "node");
++  const BinaryOperator *Expression =
++      Result.Nodes.getNodeAs<BinaryOperator>("node");
+   const DeclRefExpr *LHS = Result.Nodes.getNodeAs<DeclRefExpr>("lhs");
+   const DeclRefExpr *RHS = Result.Nodes.getNodeAs<DeclRefExpr>("rhs");
+-  const ImplicitCastExpr *LHSExpr = dyn_cast<ImplicitCastExpr>(
+-    Expression->getLHS());
+-  const ImplicitCastExpr *RHSExpr = dyn_cast<ImplicitCastExpr>(
+-    Expression->getRHS());
++  const ImplicitCastExpr *LHSExpr =
++      dyn_cast<ImplicitCastExpr>(Expression->getLHS());
++  const ImplicitCastExpr *RHSExpr =
++      dyn_cast<ImplicitCastExpr>(Expression->getRHS());
+   // The AST subtree that we are looking for will look like this:
+   // -BinaryOperator ==/!=
+   //  |-ImplicitCastExpr LValueToRValue
+@@ -47,10 +46,11 @@ void NaNExprChecker::check(
+       std::distance(LHSExpr->child_begin(), LHSExpr->child_end()) == 1 &&
+       std::distance(RHSExpr->child_begin(), RHSExpr->child_end()) == 1 &&
+       *LHSExpr->child_begin() == LHS && *RHSExpr->child_begin() == RHS) {
+-    diag(Expression->getLocStart(), "comparing a floating point value to itself for "
+-                                    "NaN checking can lead to incorrect results",
++    diag(Expression->getBeginLoc(),
++         "comparing a floating point value to itself for "
++         "NaN checking can lead to incorrect results",
+          DiagnosticIDs::Error);
+-    diag(Expression->getLocStart(), "consider using mozilla::IsNaN instead",
++    diag(Expression->getBeginLoc(), "consider using mozilla::IsNaN instead",
+          DiagnosticIDs::Note);
+   }
+ }
+diff --git a/build/clang-plugin/NaNExprChecker.h b/build/clang-plugin/NaNExprChecker.h
+index 499c6ce..313c3cb 100644
+--- a/build/clang-plugin/NaNExprChecker.h
++++ b/build/clang-plugin/NaNExprChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class NaNExprChecker : public BaseCheck {
+ public:
+-  NaNExprChecker(StringRef CheckName,
+-                 ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  NaNExprChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NeedsNoVTableTypeChecker.cpp b/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
+index e9c9090..9d5ad03 100644
+--- a/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
++++ b/build/clang-plugin/NeedsNoVTableTypeChecker.cpp
+@@ -5,7 +5,7 @@
+ #include "NeedsNoVTableTypeChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NeedsNoVTableTypeChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NeedsNoVTableTypeChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+       classTemplateSpecializationDecl(
+           allOf(hasAnyTemplateArgument(refersToType(hasVTable())),
+@@ -14,8 +14,7 @@ void NeedsNoVTableTypeChecker::registerMatchers(MatchFinder* AstMatcher) {
+       this);
+ }
+ 
+-void NeedsNoVTableTypeChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void NeedsNoVTableTypeChecker::check(const MatchFinder::MatchResult &Result) {
+   const ClassTemplateSpecializationDecl *Specialization =
+       Result.Nodes.getNodeAs<ClassTemplateSpecializationDecl>("node");
+ 
+@@ -30,11 +29,11 @@ void NeedsNoVTableTypeChecker::check(
+     }
+   }
+ 
+-  diag(Specialization->getLocStart(),
++  diag(Specialization->getBeginLoc(),
+        "%0 cannot be instantiated because %1 has a VTable",
+-       DiagnosticIDs::Error) << Specialization
+-                             << Offender;
++       DiagnosticIDs::Error)
++      << Specialization << Offender;
+   diag(Specialization->getPointOfInstantiation(),
+-       "bad instantiation of %0 requested here",
+-       DiagnosticIDs::Note)  << Specialization;
++       "bad instantiation of %0 requested here", DiagnosticIDs::Note)
++      << Specialization;
+ }
+diff --git a/build/clang-plugin/NeedsNoVTableTypeChecker.h b/build/clang-plugin/NeedsNoVTableTypeChecker.h
+index 9efc6b2..abff4d1 100644
+--- a/build/clang-plugin/NeedsNoVTableTypeChecker.h
++++ b/build/clang-plugin/NeedsNoVTableTypeChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class NeedsNoVTableTypeChecker : public BaseCheck {
+ public:
+-  NeedsNoVTableTypeChecker(StringRef CheckName,
+-                           ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  NeedsNoVTableTypeChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
+index e37d6d7..188169e 100644
+--- a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
++++ b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.cpp
+@@ -5,10 +5,11 @@
+ #include "NoAddRefReleaseOnReturnChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NoAddRefReleaseOnReturnChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NoAddRefReleaseOnReturnChecker::registerMatchers(MatchFinder *AstMatcher) {
+   // Look for all of the calls to AddRef() or Release()
+-  AstMatcher->addMatcher(memberExpr(isAddRefOrRelease(), hasParent(callExpr())).bind("member"),
+-                         this);
++  AstMatcher->addMatcher(
++      memberExpr(isAddRefOrRelease(), hasParent(callExpr())).bind("member"),
++      this);
+ }
+ 
+ void NoAddRefReleaseOnReturnChecker::check(
+@@ -20,12 +21,11 @@ void NoAddRefReleaseOnReturnChecker::check(
+   // to a MOZ_NO_ADDREF_RELEASE_ON_RETURN function or method.
+   if (auto *Call = dyn_cast<CallExpr>(Base)) {
+     if (auto *Callee = Call->getDirectCallee()) {
+-      if (hasCustomAnnotation(Callee, "moz_no_addref_release_on_return")) {
+-        diag(Call->getLocStart(),
++      if (hasCustomAttribute<moz_no_addref_release_on_return>(Callee)) {
++        diag(Call->getBeginLoc(),
+              "%1 cannot be called on the return value of %0",
+              DiagnosticIDs::Error)
+-          << Callee
+-          << dyn_cast<CXXMethodDecl>(Member->getMemberDecl());
++            << Callee << dyn_cast<CXXMethodDecl>(Member->getMemberDecl());
+       }
+     }
+   }
+diff --git a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.h b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.h
+index 16e6ead..525f769 100644
+--- a/build/clang-plugin/NoAddRefReleaseOnReturnChecker.h
++++ b/build/clang-plugin/NoAddRefReleaseOnReturnChecker.h
+@@ -11,8 +11,8 @@ class NoAddRefReleaseOnReturnChecker : public BaseCheck {
+ public:
+   NoAddRefReleaseOnReturnChecker(StringRef CheckName,
+                                  ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NoAutoTypeChecker.cpp b/build/clang-plugin/NoAutoTypeChecker.cpp
+index b856c68..937c7c5 100644
+--- a/build/clang-plugin/NoAutoTypeChecker.cpp
++++ b/build/clang-plugin/NoAutoTypeChecker.cpp
+@@ -5,19 +5,17 @@
+ #include "NoAutoTypeChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NoAutoTypeChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NoAutoTypeChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(varDecl(hasType(autoNonAutoableType())).bind("node"),
+                          this);
+ }
+ 
+-void NoAutoTypeChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void NoAutoTypeChecker::check(const MatchFinder::MatchResult &Result) {
+   const VarDecl *D = Result.Nodes.getNodeAs<VarDecl>("node");
+ 
+-  diag(D->getLocation(),
+-       "Cannot use auto to declare a variable of type %0",
+-       DiagnosticIDs::Error) << D->getType();
+-  diag(D->getLocation(),
+-       "Please write out this type explicitly",
++  diag(D->getLocation(), "Cannot use auto to declare a variable of type %0",
++       DiagnosticIDs::Error)
++      << D->getType();
++  diag(D->getLocation(), "Please write out this type explicitly",
+        DiagnosticIDs::Note);
+ }
+diff --git a/build/clang-plugin/NoAutoTypeChecker.h b/build/clang-plugin/NoAutoTypeChecker.h
+index c6bc219..0801503 100644
+--- a/build/clang-plugin/NoAutoTypeChecker.h
++++ b/build/clang-plugin/NoAutoTypeChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class NoAutoTypeChecker : public BaseCheck {
+ public:
+-  NoAutoTypeChecker(StringRef CheckName,
+-                    ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  NoAutoTypeChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp b/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
+index 157f04c..eb78a3b 100644
+--- a/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
++++ b/build/clang-plugin/NoDuplicateRefCntMemberChecker.cpp
+@@ -5,7 +5,7 @@
+ #include "NoDuplicateRefCntMemberChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NoDuplicateRefCntMemberChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NoDuplicateRefCntMemberChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(cxxRecordDecl().bind("decl"), this);
+ }
+ 
+@@ -34,31 +34,28 @@ void NoDuplicateRefCntMemberChecker::check(
+     if (BaseRefCntMember) {
+       if (RefCntMember) {
+         // We have an mRefCnt, and superclass has an mRefCnt
+-        const char* Error =
+-            "Refcounted record %0 has multiple mRefCnt members";
+-        const char* Note1 =
+-            "Superclass %0 also has an mRefCnt member";
+-        const char* Note2 =
++        const char *Error = "Refcounted record %0 has multiple mRefCnt members";
++        const char *Note1 = "Superclass %0 also has an mRefCnt member";
++        const char *Note2 =
+             "Consider using the _INHERITED macros for AddRef and Release here";
+ 
+-        diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D;
+-        diag(BaseRefCntMember->getLocStart(), Note1, DiagnosticIDs::Note)
+-          << BaseRefCntMember->getParent();
+-        diag(RefCntMember->getLocStart(), Note2, DiagnosticIDs::Note);
++        diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << D;
++        diag(BaseRefCntMember->getBeginLoc(), Note1, DiagnosticIDs::Note)
++            << BaseRefCntMember->getParent();
++        diag(RefCntMember->getBeginLoc(), Note2, DiagnosticIDs::Note);
+       }
+ 
+       if (FoundRefCntBase) {
+-        const char* Error =
+-            "Refcounted record %0 has multiple superclasses with mRefCnt members";
+-        const char* Note =
+-            "Superclass %0 has an mRefCnt member";
++        const char *Error = "Refcounted record %0 has multiple superclasses "
++                            "with mRefCnt members";
++        const char *Note = "Superclass %0 has an mRefCnt member";
+ 
+         // superclass has mRefCnt, and another superclass also has an mRefCnt
+-        diag(D->getLocStart(), Error, DiagnosticIDs::Error) << D;
+-        diag(BaseRefCntMember->getLocStart(), Note, DiagnosticIDs::Note)
+-          << BaseRefCntMember->getParent();
+-        diag(FoundRefCntBase->getLocStart(), Note, DiagnosticIDs::Note)
+-          << FoundRefCntBase->getParent();
++        diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << D;
++        diag(BaseRefCntMember->getBeginLoc(), Note, DiagnosticIDs::Note)
++            << BaseRefCntMember->getParent();
++        diag(FoundRefCntBase->getBeginLoc(), Note, DiagnosticIDs::Note)
++            << FoundRefCntBase->getParent();
+       }
+ 
+       // Record that we've found a base with a mRefCnt member
+diff --git a/build/clang-plugin/NoDuplicateRefCntMemberChecker.h b/build/clang-plugin/NoDuplicateRefCntMemberChecker.h
+index e080593..e038ca8 100644
+--- a/build/clang-plugin/NoDuplicateRefCntMemberChecker.h
++++ b/build/clang-plugin/NoDuplicateRefCntMemberChecker.h
+@@ -11,8 +11,8 @@ class NoDuplicateRefCntMemberChecker : public BaseCheck {
+ public:
+   NoDuplicateRefCntMemberChecker(StringRef CheckName,
+                                  ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NoExplicitMoveConstructorChecker.cpp b/build/clang-plugin/NoExplicitMoveConstructorChecker.cpp
+index 9b547bf..3e46c55 100644
+--- a/build/clang-plugin/NoExplicitMoveConstructorChecker.cpp
++++ b/build/clang-plugin/NoExplicitMoveConstructorChecker.cpp
+@@ -5,10 +5,10 @@
+ #include "NoExplicitMoveConstructorChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NoExplicitMoveConstructorChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NoExplicitMoveConstructorChecker::registerMatchers(
++    MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+-      cxxConstructorDecl(isExplicitMoveConstructor()).bind("node"),
+-      this);
++      cxxConstructorDecl(isExplicitMoveConstructor()).bind("node"), this);
+ }
+ 
+ void NoExplicitMoveConstructorChecker::check(
+diff --git a/build/clang-plugin/NoExplicitMoveConstructorChecker.h b/build/clang-plugin/NoExplicitMoveConstructorChecker.h
+index 90076af..adc474c 100644
+--- a/build/clang-plugin/NoExplicitMoveConstructorChecker.h
++++ b/build/clang-plugin/NoExplicitMoveConstructorChecker.h
+@@ -11,8 +11,8 @@ class NoExplicitMoveConstructorChecker : public BaseCheck {
+ public:
+   NoExplicitMoveConstructorChecker(StringRef CheckName,
+                                    ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NonMemMovableMemberChecker.cpp b/build/clang-plugin/NonMemMovableMemberChecker.cpp
+index 4a92f55..232c634 100644
+--- a/build/clang-plugin/NonMemMovableMemberChecker.cpp
++++ b/build/clang-plugin/NonMemMovableMemberChecker.cpp
+@@ -7,21 +7,18 @@
+ 
+ MemMoveAnnotation NonMemMovable = MemMoveAnnotation();
+ 
+-void NonMemMovableMemberChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NonMemMovableMemberChecker::registerMatchers(MatchFinder *AstMatcher) {
+   // Handle non-mem-movable members
+-  AstMatcher->addMatcher(
+-      cxxRecordDecl(needsMemMovableMembers())
+-          .bind("decl"),
+-      this);
++  AstMatcher->addMatcher(cxxRecordDecl(needsMemMovableMembers()).bind("decl"),
++                         this);
+ }
+ 
+-void NonMemMovableMemberChecker::check(
+-    const MatchFinder::MatchResult &Result) {
+-  const char* Error =
++void NonMemMovableMemberChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error =
+       "class %0 cannot have non-memmovable member %1 of type %2";
+ 
+   // Get the specialization
+-  const CXXRecordDecl* Declaration =
++  const CXXRecordDecl *Declaration =
+       Result.Nodes.getNodeAs<CXXRecordDecl>("decl");
+ 
+   // Report an error for every member which is non-memmovable
+@@ -29,10 +26,9 @@ void NonMemMovableMemberChecker::check(
+     QualType Type = Field->getType();
+     if (NonMemMovable.hasEffectiveAnnotation(Type)) {
+       diag(Field->getLocation(), Error, DiagnosticIDs::Error)
+-        << Declaration
+-        << Field
+-        << Type;
+-      NonMemMovable.dumpAnnotationReason(*this, Type, Declaration->getLocation());
++          << Declaration << Field << Type;
++      NonMemMovable.dumpAnnotationReason(*this, Type,
++                                         Declaration->getLocation());
+     }
+   }
+ }
+diff --git a/build/clang-plugin/NonMemMovableMemberChecker.h b/build/clang-plugin/NonMemMovableMemberChecker.h
+index e744fcb..0fc9b1f 100644
+--- a/build/clang-plugin/NonMemMovableMemberChecker.h
++++ b/build/clang-plugin/NonMemMovableMemberChecker.h
+@@ -11,8 +11,8 @@ class NonMemMovableMemberChecker : public BaseCheck {
+ public:
+   NonMemMovableMemberChecker(StringRef CheckName,
+                              ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NonMemMovableTemplateArgChecker.cpp b/build/clang-plugin/NonMemMovableTemplateArgChecker.cpp
+index 1f7679d..65afe21 100644
+--- a/build/clang-plugin/NonMemMovableTemplateArgChecker.cpp
++++ b/build/clang-plugin/NonMemMovableTemplateArgChecker.cpp
+@@ -5,7 +5,8 @@
+ #include "NonMemMovableTemplateArgChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NonMemMovableTemplateArgChecker::registerMatchers(MatchFinder* AstMatcher) {
++void NonMemMovableTemplateArgChecker::registerMatchers(
++    MatchFinder *AstMatcher) {
+   // Handle non-mem-movable template specializations
+   AstMatcher->addMatcher(
+       classTemplateSpecializationDecl(
+@@ -17,10 +18,9 @@ void NonMemMovableTemplateArgChecker::registerMatchers(MatchFinder* AstMatcher)
+ 
+ void NonMemMovableTemplateArgChecker::check(
+     const MatchFinder::MatchResult &Result) {
+-  const char* Error =
++  const char *Error =
+       "Cannot instantiate %0 with non-memmovable template argument %1";
+-  const char* Note =
+-      "instantiation of %0 requested here";
++  const char *Note = "instantiation of %0 requested here";
+ 
+   // Get the specialization
+   const ClassTemplateSpecializationDecl *Specialization =
+@@ -33,9 +33,8 @@ void NonMemMovableTemplateArgChecker::check(
+   for (unsigned i = 0; i < Args.size(); ++i) {
+     QualType ArgType = Args[i].getAsType();
+     if (NonMemMovable.hasEffectiveAnnotation(ArgType)) {
+-      diag(Specialization->getLocation(), Error,
+-           DiagnosticIDs::Error) << Specialization
+-                                 << ArgType;
++      diag(Specialization->getLocation(), Error, DiagnosticIDs::Error)
++          << Specialization << ArgType;
+       // XXX It would be really nice if we could get the instantiation stack
+       // information
+       // from Sema such that we could print a full template instantiation stack,
+diff --git a/build/clang-plugin/NonMemMovableTemplateArgChecker.h b/build/clang-plugin/NonMemMovableTemplateArgChecker.h
+index 02b9455..cd94c95 100644
+--- a/build/clang-plugin/NonMemMovableTemplateArgChecker.h
++++ b/build/clang-plugin/NonMemMovableTemplateArgChecker.h
+@@ -11,8 +11,8 @@ class NonMemMovableTemplateArgChecker : public BaseCheck {
+ public:
+   NonMemMovableTemplateArgChecker(StringRef CheckName,
+                                   ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/NonParamInsideFunctionDeclChecker.cpp b/build/clang-plugin/NonParamInsideFunctionDeclChecker.cpp
+index 198bb8a..fa12a8c 100644
+--- a/build/clang-plugin/NonParamInsideFunctionDeclChecker.cpp
++++ b/build/clang-plugin/NonParamInsideFunctionDeclChecker.cpp
+@@ -5,22 +5,59 @@
+ #include "NonParamInsideFunctionDeclChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void NonParamInsideFunctionDeclChecker::registerMatchers(MatchFinder* AstMatcher) {
++class NonParamAnnotation : public CustomTypeAnnotation {
++public:
++  NonParamAnnotation() : CustomTypeAnnotation(moz_non_param, "non-param"){};
++
++protected:
++  // Adding alignas(_) on a struct implicitly marks it as MOZ_NON_PARAM, due to
++  // MSVC limitations which prevent passing explcitly aligned types by value as
++  // parameters. This overload of hasFakeAnnotation injects fake MOZ_NON_PARAM
++  // annotations onto these types.
++  std::string getImplicitReason(const TagDecl *D) const override {
++    // Check if the decl itself has an AlignedAttr on it.
++    for (const Attr *A : D->attrs()) {
++      if (isa<AlignedAttr>(A)) {
++        return "it has an alignas(_) annotation";
++      }
++    }
++
++    // Check if any of the decl's fields have an AlignedAttr on them.
++    if (auto RD = dyn_cast<RecordDecl>(D)) {
++      for (auto F : RD->fields()) {
++        for (auto A : F->attrs()) {
++          if (isa<AlignedAttr>(A)) {
++            return ("member '" + F->getName() +
++                    "' has an alignas(_) annotation")
++                .str();
++          }
++        }
++      }
++    }
++
++    // We don't need to check the types of fields, as the CustomTypeAnnotation
++    // infrastructure will handle that for us.
++    return "";
++  }
++};
++NonParamAnnotation NonParam;
++
++void NonParamInsideFunctionDeclChecker::registerMatchers(
++    MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+-      functionDecl(anyOf(allOf(isDefinition(),
+-                               hasAncestor(classTemplateSpecializationDecl()
+-                                               .bind("spec"))),
+-                         isDefinition()))
++      functionDecl(
++          anyOf(allOf(isDefinition(),
++                      hasAncestor(
++                          classTemplateSpecializationDecl().bind("spec"))),
++                isDefinition()))
+           .bind("func"),
+       this);
+-  AstMatcher->addMatcher(
+-      lambdaExpr().bind("lambda"),
+-      this);
++  AstMatcher->addMatcher(lambdaExpr().bind("lambda"), this);
+ }
+ 
+ void NonParamInsideFunctionDeclChecker::check(
+     const MatchFinder::MatchResult &Result) {
+-  static DenseSet<const FunctionDecl*> CheckedFunctionDecls;
++  static DenseSet<const FunctionDecl *> CheckedFunctionDecls;
+ 
+   const FunctionDecl *func = Result.Nodes.getNodeAs<FunctionDecl>("func");
+   if (!func) {
+@@ -38,6 +75,17 @@ void NonParamInsideFunctionDeclChecker::check(
+     return;
+   }
+ 
++  // We need to skip decls which have these types as parameters in system
++  // headers, because presumably those headers act like an assertion that the
++  // alignment will be preserved in that situation.
++  if (getDeclarationNamespace(func) == "std") {
++    return;
++  }
++
++  if (inThirdPartyPath(func)) {
++    return;
++  }
++
+   // Don't report errors on the same declarations more than once.
+   if (CheckedFunctionDecls.count(func)) {
+     return;
+@@ -51,16 +99,19 @@ void NonParamInsideFunctionDeclChecker::check(
+     QualType T = p->getType().withoutLocalFastQualifiers();
+     if (NonParam.hasEffectiveAnnotation(T)) {
+       diag(p->getLocation(), "Type %0 must not be used as parameter",
+-           DiagnosticIDs::Error) << T;
+-      diag(p->getLocation(), "Please consider passing a const reference instead",
++           DiagnosticIDs::Error)
++          << T;
++      diag(p->getLocation(),
++           "Please consider passing a const reference instead",
+            DiagnosticIDs::Note);
+ 
+       if (Spec) {
+         diag(Spec->getPointOfInstantiation(),
+-             "The bad argument was passed to %0 here",
+-             DiagnosticIDs::Note)
+-          << Spec->getSpecializedTemplate();
++             "The bad argument was passed to %0 here", DiagnosticIDs::Note)
++            << Spec->getSpecializedTemplate();
+       }
++
++      NonParam.dumpAnnotationReason(*this, T, p->getLocation());
+     }
+   }
+ }
+diff --git a/build/clang-plugin/NonParamInsideFunctionDeclChecker.h b/build/clang-plugin/NonParamInsideFunctionDeclChecker.h
+index 2431ab3..ed11f3f 100644
+--- a/build/clang-plugin/NonParamInsideFunctionDeclChecker.h
++++ b/build/clang-plugin/NonParamInsideFunctionDeclChecker.h
+@@ -11,8 +11,8 @@ class NonParamInsideFunctionDeclChecker : public BaseCheck {
+ public:
+   NonParamInsideFunctionDeclChecker(StringRef CheckName,
+                                     ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/OverrideBaseCallChecker.cpp b/build/clang-plugin/OverrideBaseCallChecker.cpp
+index 07cc1c7..600d431 100644
+--- a/build/clang-plugin/OverrideBaseCallChecker.cpp
++++ b/build/clang-plugin/OverrideBaseCallChecker.cpp
+@@ -5,26 +5,25 @@
+ #include "OverrideBaseCallChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void OverrideBaseCallChecker::registerMatchers(MatchFinder* AstMatcher) {
+-  AstMatcher->addMatcher(cxxRecordDecl(hasBaseClasses()).bind("class"),
+-      this);
++void OverrideBaseCallChecker::registerMatchers(MatchFinder *AstMatcher) {
++  AstMatcher->addMatcher(cxxRecordDecl(hasBaseClasses()).bind("class"), this);
+ }
+ 
+ bool OverrideBaseCallChecker::isRequiredBaseMethod(
+     const CXXMethodDecl *Method) {
+-  return hasCustomAnnotation(Method, "moz_required_base_method");
++  return hasCustomAttribute<moz_required_base_method>(Method);
+ }
+ 
+ void OverrideBaseCallChecker::evaluateExpression(
+-    const Stmt *StmtExpr, std::list<const CXXMethodDecl*> &MethodList) {
++    const Stmt *StmtExpr, std::list<const CXXMethodDecl *> &MethodList) {
+   // Continue while we have methods in our list
+   if (!MethodList.size()) {
+     return;
+   }
+ 
+   if (auto MemberFuncCall = dyn_cast<CXXMemberCallExpr>(StmtExpr)) {
+-    if (auto Method = dyn_cast<CXXMethodDecl>(
+-        MemberFuncCall->getDirectCallee())) {
++    if (auto Method =
++            dyn_cast<CXXMethodDecl>(MemberFuncCall->getDirectCallee())) {
+       findBaseMethodCall(Method, MethodList);
+     }
+   }
+@@ -38,34 +37,33 @@ void OverrideBaseCallChecker::evaluateExpression(
+ 
+ void OverrideBaseCallChecker::getRequiredBaseMethod(
+     const CXXMethodDecl *Method,
+-    std::list<const CXXMethodDecl*>& MethodsList) {
++    std::list<const CXXMethodDecl *> &MethodsList) {
+ 
+   if (isRequiredBaseMethod(Method)) {
+     MethodsList.push_back(Method);
+   } else {
+     // Loop through all it's base methods.
+     for (auto BaseMethod = Method->begin_overridden_methods();
+-        BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
++         BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
+       getRequiredBaseMethod(*BaseMethod, MethodsList);
+     }
+   }
+ }
+ 
+ void OverrideBaseCallChecker::findBaseMethodCall(
+-    const CXXMethodDecl* Method,
+-    std::list<const CXXMethodDecl*>& MethodsList) {
++    const CXXMethodDecl *Method,
++    std::list<const CXXMethodDecl *> &MethodsList) {
+ 
+   MethodsList.remove(Method);
+   // Loop also through all it's base methods;
+   for (auto BaseMethod = Method->begin_overridden_methods();
+-      BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
++       BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
+     findBaseMethodCall(*BaseMethod, MethodsList);
+   }
+ }
+ 
+-void OverrideBaseCallChecker::check(
+-    const MatchFinder::MatchResult &Result) {
+-  const char* Error =
++void OverrideBaseCallChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error =
+       "Method %0 must be called in all overrides, but is not called in "
+       "this override defined for class %1";
+   const CXXRecordDecl *Decl = Result.Nodes.getNodeAs<CXXRecordDecl>("class");
+@@ -80,11 +78,11 @@ void OverrideBaseCallChecker::check(
+ 
+     // Preferred the usage of list instead of vector in order to avoid
+     // calling erase-remove when deleting items
+-    std::list<const CXXMethodDecl*> MethodsList;
++    std::list<const CXXMethodDecl *> MethodsList;
+     // For each overridden method push it to a list if it meets our
+     // criteria
+     for (auto BaseMethod = Method->begin_overridden_methods();
+-        BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
++         BaseMethod != Method->end_overridden_methods(); BaseMethod++) {
+       getRequiredBaseMethod(*BaseMethod, MethodsList);
+     }
+ 
+@@ -105,8 +103,7 @@ void OverrideBaseCallChecker::check(
+       BaseMethod->printQualifiedName(OS);
+ 
+       diag(Method->getLocation(), Error, DiagnosticIDs::Error)
+-          << OS.str()
+-          << Decl->getName();
++          << OS.str() << Decl->getName();
+     }
+   }
+ }
+diff --git a/build/clang-plugin/OverrideBaseCallChecker.h b/build/clang-plugin/OverrideBaseCallChecker.h
+index da37855..e919af6 100644
+--- a/build/clang-plugin/OverrideBaseCallChecker.h
++++ b/build/clang-plugin/OverrideBaseCallChecker.h
+@@ -9,18 +9,18 @@
+ 
+ class OverrideBaseCallChecker : public BaseCheck {
+ public:
+-  OverrideBaseCallChecker(StringRef CheckName,
+-                          ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  OverrideBaseCallChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
++
+ private:
+   void evaluateExpression(const Stmt *StmtExpr,
+-      std::list<const CXXMethodDecl*> &MethodList);
+-  void getRequiredBaseMethod(const CXXMethodDecl* Method,
+-      std::list<const CXXMethodDecl*>& MethodsList);
+-  void findBaseMethodCall(const CXXMethodDecl* Method,
+-      std::list<const CXXMethodDecl*>& MethodsList);
++                          std::list<const CXXMethodDecl *> &MethodList);
++  void getRequiredBaseMethod(const CXXMethodDecl *Method,
++                             std::list<const CXXMethodDecl *> &MethodsList);
++  void findBaseMethodCall(const CXXMethodDecl *Method,
++                          std::list<const CXXMethodDecl *> &MethodsList);
+   bool isRequiredBaseMethod(const CXXMethodDecl *Method);
+ };
+ 
+diff --git a/build/clang-plugin/OverrideBaseCallUsageChecker.cpp b/build/clang-plugin/OverrideBaseCallUsageChecker.cpp
+index 7513dd8..34b9cd1 100644
+--- a/build/clang-plugin/OverrideBaseCallUsageChecker.cpp
++++ b/build/clang-plugin/OverrideBaseCallUsageChecker.cpp
+@@ -5,7 +5,7 @@
+ #include "OverrideBaseCallUsageChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void OverrideBaseCallUsageChecker::registerMatchers(MatchFinder* AstMatcher) {
++void OverrideBaseCallUsageChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+       cxxMethodDecl(isNonVirtual(), isRequiredBaseMethod()).bind("method"),
+       this);
+@@ -13,7 +13,7 @@ void OverrideBaseCallUsageChecker::registerMatchers(MatchFinder* AstMatcher) {
+ 
+ void OverrideBaseCallUsageChecker::check(
+     const MatchFinder::MatchResult &Result) {
+-  const char* Error =
++  const char *Error =
+       "MOZ_REQUIRED_BASE_METHOD can be used only on virtual methods";
+   const CXXMethodDecl *Method = Result.Nodes.getNodeAs<CXXMethodDecl>("method");
+ 
+diff --git a/build/clang-plugin/OverrideBaseCallUsageChecker.h b/build/clang-plugin/OverrideBaseCallUsageChecker.h
+index 302fbcf..0e81d72 100644
+--- a/build/clang-plugin/OverrideBaseCallUsageChecker.h
++++ b/build/clang-plugin/OverrideBaseCallUsageChecker.h
+@@ -15,8 +15,8 @@ class OverrideBaseCallUsageChecker : public BaseCheck {
+ public:
+   OverrideBaseCallUsageChecker(StringRef CheckName = "override-base-call-usage",
+                                ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/RecurseGuard.h b/build/clang-plugin/RecurseGuard.h
+index 1f1b359..5daf55a 100644
+--- a/build/clang-plugin/RecurseGuard.h
++++ b/build/clang-plugin/RecurseGuard.h
+@@ -17,19 +17,18 @@
+ // The RecurseGuard object will unregister its object when it is destroyed, and
+ // has a method `isRepeat()` which will return `true` if the item was already
+ // seen.
+-template<typename T>
+-class RecurseGuard {
++template <typename T> class RecurseGuard {
+ public:
+   RecurseGuard(T Thing) : Thing(Thing), Set(new DenseSet<T>()), Repeat(false) {
+     Set->insert(Thing);
+   }
+-  RecurseGuard(T Thing, std::shared_ptr<DenseSet<T>>& Set)
+-    : Thing(Thing), Set(Set), Repeat(false) {
++  RecurseGuard(T Thing, std::shared_ptr<DenseSet<T>> &Set)
++      : Thing(Thing), Set(Set), Repeat(false) {
+     Repeat = !Set->insert(Thing).second;
+   }
+   RecurseGuard(const RecurseGuard &) = delete;
+-  RecurseGuard(RecurseGuard && Other)
+-    : Thing(Other.Thing), Set(Other.Set), Repeat(Other.Repeat) {
++  RecurseGuard(RecurseGuard &&Other)
++      : Thing(Other.Thing), Set(Other.Set), Repeat(Other.Repeat) {
+     Other.Repeat = true;
+   }
+   ~RecurseGuard() {
+@@ -42,17 +41,11 @@ public:
+ 
+   T get() { return Thing; }
+ 
+-  operator T() {
+-    return Thing;
+-  }
++  operator T() { return Thing; }
+ 
+-  T operator ->() {
+-    return Thing;
+-  }
++  T operator->() { return Thing; }
+ 
+-  RecurseGuard recurse(T NewThing) {
+-    return RecurseGuard(NewThing, Set);
+-  }
++  RecurseGuard recurse(T NewThing) { return RecurseGuard(NewThing, Set); }
+ 
+ private:
+   T Thing;
+diff --git a/build/clang-plugin/RefCountedCopyConstructorChecker.cpp b/build/clang-plugin/RefCountedCopyConstructorChecker.cpp
+index 5508c86..569d4ee 100644
+--- a/build/clang-plugin/RefCountedCopyConstructorChecker.cpp
++++ b/build/clang-plugin/RefCountedCopyConstructorChecker.cpp
+@@ -5,7 +5,8 @@
+ #include "RefCountedCopyConstructorChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void RefCountedCopyConstructorChecker::registerMatchers(MatchFinder* AstMatcher) {
++void RefCountedCopyConstructorChecker::registerMatchers(
++    MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+       cxxConstructExpr(
+           hasDeclaration(cxxConstructorDecl(isCompilerProvidedCopyConstructor(),
+@@ -16,14 +17,13 @@ void RefCountedCopyConstructorChecker::registerMatchers(MatchFinder* AstMatcher)
+ 
+ void RefCountedCopyConstructorChecker::check(
+     const MatchFinder::MatchResult &Result) {
+-  const char* Error =
++  const char *Error =
+       "Invalid use of compiler-provided copy constructor on refcounted type";
+-  const char* Note =
+-      "The default copy constructor also copies the "
+-      "default mRefCnt property, leading to reference "
+-      "count imbalance issues. Please provide your own "
+-      "copy constructor which only copies the fields which "
+-      "need to be copied";
++  const char *Note = "The default copy constructor also copies the "
++                     "default mRefCnt property, leading to reference "
++                     "count imbalance issues. Please provide your own "
++                     "copy constructor which only copies the fields which "
++                     "need to be copied";
+ 
+   // Everything we needed to know was checked in the matcher - we just report
+   // the error here
+diff --git a/build/clang-plugin/RefCountedCopyConstructorChecker.h b/build/clang-plugin/RefCountedCopyConstructorChecker.h
+index 4d54773..edae635 100644
+--- a/build/clang-plugin/RefCountedCopyConstructorChecker.h
++++ b/build/clang-plugin/RefCountedCopyConstructorChecker.h
+@@ -11,8 +11,8 @@ class RefCountedCopyConstructorChecker : public BaseCheck {
+ public:
+   RefCountedCopyConstructorChecker(StringRef CheckName,
+                                    ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/RefCountedInsideLambdaChecker.cpp b/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
+index 82ff54e..8a95b76 100644
+--- a/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
++++ b/build/clang-plugin/RefCountedInsideLambdaChecker.cpp
+@@ -7,7 +7,7 @@
+ 
+ RefCountedMap RefCountedClasses;
+ 
+-void RefCountedInsideLambdaChecker::registerMatchers(MatchFinder* AstMatcher) {
++void RefCountedInsideLambdaChecker::registerMatchers(MatchFinder *AstMatcher) {
+   // We want to reject any code which captures a pointer to an object of a
+   // refcounted type, and then lets that value escape. As a primitive analysis,
+   // we reject any occurances of the lambda as a template parameter to a class
+@@ -15,36 +15,35 @@ void RefCountedInsideLambdaChecker::registerMatchers(MatchFinder* AstMatcher) {
+   // in a return value (either from lambdas, or in c++14, auto functions).
+   //
+   // We check these lambdas' capture lists for raw pointers to refcounted types.
++  AstMatcher->addMatcher(functionDecl(returns(recordType(hasDeclaration(
++                             cxxRecordDecl(isLambdaDecl()).bind("decl"))))),
++                         this);
++  AstMatcher->addMatcher(lambdaExpr().bind("lambdaExpr"), this);
+   AstMatcher->addMatcher(
+-      functionDecl(returns(recordType(hasDeclaration(cxxRecordDecl(
+-        isLambdaDecl()).bind("decl"))))),
+-      this);
+-  AstMatcher->addMatcher(lambdaExpr().bind("lambdaExpr"),
+-      this);
+-  AstMatcher->addMatcher(
+-      classTemplateSpecializationDecl(hasAnyTemplateArgument(refersToType(
+-        recordType(hasDeclaration(cxxRecordDecl(
+-          isLambdaDecl()).bind("decl")))))),
++      classTemplateSpecializationDecl(
++          hasAnyTemplateArgument(refersToType(recordType(
++              hasDeclaration(cxxRecordDecl(isLambdaDecl()).bind("decl")))))),
+       this);
+ }
+ 
+ void RefCountedInsideLambdaChecker::emitDiagnostics(SourceLocation Loc,
+                                                     StringRef Name,
+                                                     QualType Type) {
+-  diag(Loc, "Refcounted variable '%0' of type %1 cannot be captured by a lambda",
+-       DiagnosticIDs::Error) << Name << Type;
+-  diag(Loc, "Please consider using a smart pointer",
+-       DiagnosticIDs::Note);
++  diag(Loc,
++       "Refcounted variable '%0' of type %1 cannot be captured by a lambda",
++       DiagnosticIDs::Error)
++      << Name << Type;
++  diag(Loc, "Please consider using a smart pointer", DiagnosticIDs::Note);
+ }
+ 
+ void RefCountedInsideLambdaChecker::check(
+     const MatchFinder::MatchResult &Result) {
+-  static DenseSet<const CXXRecordDecl*> CheckedDecls;
++  static DenseSet<const CXXRecordDecl *> CheckedDecls;
+ 
+   const CXXRecordDecl *Lambda = Result.Nodes.getNodeAs<CXXRecordDecl>("decl");
+ 
+   if (const LambdaExpr *OuterLambda =
+-    Result.Nodes.getNodeAs<LambdaExpr>("lambdaExpr")) {
++          Result.Nodes.getNodeAs<LambdaExpr>("lambdaExpr")) {
+     const CXXMethodDecl *OpCall = OuterLambda->getCallOperator();
+     QualType ReturnTy = OpCall->getReturnType();
+     if (const CXXRecordDecl *Record = ReturnTy->getAsCXXRecordDecl()) {
+@@ -64,19 +63,20 @@ void RefCountedInsideLambdaChecker::check(
+ 
+   bool StrongRefToThisCaptured = false;
+ 
+-  for (const LambdaCapture& Capture : Lambda->captures()) {
++  for (const LambdaCapture &Capture : Lambda->captures()) {
+     // Check if any of the captures are ByRef. If they are, we have nothing to
+-    // report, as it's OK to capture raw pointers to refcounted objects so long as
+-    // the Lambda doesn't escape the current scope, which is required by ByRef
+-    // captures already.
++    // report, as it's OK to capture raw pointers to refcounted objects so long
++    // as the Lambda doesn't escape the current scope, which is required by
++    // ByRef captures already.
+     if (Capture.getCaptureKind() == LCK_ByRef) {
+       return;
+     }
+ 
+-    // Check if this capture is byvalue, and captures a strong reference to this.
+-    // XXX: Do we want to make sure that this type which we are capturing is a "Smart Pointer" somehow?
+-    if (!StrongRefToThisCaptured &&
+-        Capture.capturesVariable() &&
++    // Check if this capture is byvalue, and captures a strong reference to
++    // this.
++    // XXX: Do we want to make sure that this type which we are capturing is a
++    // "Smart Pointer" somehow?
++    if (!StrongRefToThisCaptured && Capture.capturesVariable() &&
+         Capture.getCaptureKind() == LCK_ByCopy) {
+       const VarDecl *Var = Capture.getCapturedVar();
+       if (Var->hasInit()) {
+@@ -103,13 +103,15 @@ void RefCountedInsideLambdaChecker::check(
+     }
+   }
+ 
+-  // Now we can go through and produce errors for any captured variables or this pointers.
+-  for (const LambdaCapture& Capture : Lambda->captures()) {
++  // Now we can go through and produce errors for any captured variables or this
++  // pointers.
++  for (const LambdaCapture &Capture : Lambda->captures()) {
+     if (Capture.capturesVariable()) {
+       QualType Pointee = Capture.getCapturedVar()->getType()->getPointeeType();
+ 
+       if (!Pointee.isNull() && isClassRefCounted(Pointee)) {
+-        emitDiagnostics(Capture.getLocation(), Capture.getCapturedVar()->getName(), Pointee);
++        emitDiagnostics(Capture.getLocation(),
++                        Capture.getCapturedVar()->getName(), Pointee);
+         return;
+       }
+     }
+@@ -125,12 +127,12 @@ void RefCountedInsideLambdaChecker::check(
+     // captured implicitly when the LambdaCaptureDefault was LCD_ByRef, as that
+     // expresses the intent that the lambda won't leave the enclosing scope.
+     bool ImplicitByRefDefaultedCapture =
+-      Capture.isImplicit() && Lambda->getLambdaCaptureDefault() == LCD_ByRef;
+-    if (Capture.capturesThis() &&
+-        !ImplicitByRefDefaultedCapture &&
++        Capture.isImplicit() && Lambda->getLambdaCaptureDefault() == LCD_ByRef;
++    if (Capture.capturesThis() && !ImplicitByRefDefaultedCapture &&
+         !StrongRefToThisCaptured) {
+       ThisVisitor V(*this);
+-      bool NotAborted = V.TraverseDecl(const_cast<CXXMethodDecl *>(Lambda->getLambdaCallOperator()));
++      bool NotAborted = V.TraverseDecl(
++          const_cast<CXXMethodDecl *>(Lambda->getLambdaCallOperator()));
+       if (!NotAborted) {
+         return;
+       }
+@@ -138,10 +140,11 @@ void RefCountedInsideLambdaChecker::check(
+   }
+ }
+ 
+-bool RefCountedInsideLambdaChecker::ThisVisitor::VisitCXXThisExpr(CXXThisExpr *This) {
++bool RefCountedInsideLambdaChecker::ThisVisitor::VisitCXXThisExpr(
++    CXXThisExpr *This) {
+   QualType Pointee = This->getType()->getPointeeType();
+   if (!Pointee.isNull() && isClassRefCounted(Pointee)) {
+-    Checker.emitDiagnostics(This->getLocStart(), "this", Pointee);
++    Checker.emitDiagnostics(This->getBeginLoc(), "this", Pointee);
+     return false;
+   }
+ 
+diff --git a/build/clang-plugin/RefCountedInsideLambdaChecker.h b/build/clang-plugin/RefCountedInsideLambdaChecker.h
+index c947629..ed94196 100644
+--- a/build/clang-plugin/RefCountedInsideLambdaChecker.h
++++ b/build/clang-plugin/RefCountedInsideLambdaChecker.h
+@@ -11,8 +11,8 @@ class RefCountedInsideLambdaChecker : public BaseCheck {
+ public:
+   RefCountedInsideLambdaChecker(StringRef CheckName,
+                                 ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ 
+   void emitDiagnostics(SourceLocation Loc, StringRef Name, QualType Type);
+@@ -20,12 +20,13 @@ public:
+ private:
+   class ThisVisitor : public RecursiveASTVisitor<ThisVisitor> {
+   public:
+-    explicit ThisVisitor(RefCountedInsideLambdaChecker& Checker)
+-      : Checker(Checker) {}
++    explicit ThisVisitor(RefCountedInsideLambdaChecker &Checker)
++        : Checker(Checker) {}
+ 
+     bool VisitCXXThisExpr(CXXThisExpr *This);
++
+   private:
+-    RefCountedInsideLambdaChecker& Checker;
++    RefCountedInsideLambdaChecker &Checker;
+   };
+ };
+ 
+diff --git a/build/clang-plugin/ScopeChecker.cpp b/build/clang-plugin/ScopeChecker.cpp
+index 252cfd6..55a77b3 100644
+--- a/build/clang-plugin/ScopeChecker.cpp
++++ b/build/clang-plugin/ScopeChecker.cpp
+@@ -5,14 +5,15 @@
+ #include "ScopeChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void ScopeChecker::registerMatchers(MatchFinder* AstMatcher) {
++void ScopeChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(varDecl().bind("node"), this);
+   AstMatcher->addMatcher(cxxNewExpr().bind("node"), this);
+-  AstMatcher->addMatcher(materializeTemporaryExpr().bind("node"), this);
+   AstMatcher->addMatcher(
+-      callExpr(callee(functionDecl(heapAllocator()))).bind("node"),
+-      this);
+-  AstMatcher->addMatcher(parmVarDecl().bind("parm_vardecl"), this);
++      materializeTemporaryExpr(
++          unless(hasDescendant(cxxConstructExpr(allowsTemporary())))
++      ).bind("node"), this);
++  AstMatcher->addMatcher(
++      callExpr(callee(functionDecl(heapAllocator()))).bind("node"), this);
+ }
+ 
+ // These enum variants determine whether an allocation has occured in the code.
+@@ -31,15 +32,15 @@ typedef DenseMap<const MaterializeTemporaryExpr *, const Decl *>
+     AutomaticTemporaryMap;
+ AutomaticTemporaryMap AutomaticTemporaries;
+ 
+-void ScopeChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void ScopeChecker::check(const MatchFinder::MatchResult &Result) {
+   // There are a variety of different reasons why something could be allocated
+   AllocationVariety Variety = AV_None;
+   SourceLocation Loc;
+   QualType T;
++  bool IsStaticLocal = false;
+ 
+   if (const ParmVarDecl *D =
+-          Result.Nodes.getNodeAs<ParmVarDecl>("parm_vardecl")) {
++          Result.Nodes.getNodeAs<ParmVarDecl>("node")) {
+     if (D->hasUnparsedDefaultArg() || D->hasUninstantiatedDefaultArg()) {
+       return;
+     }
+@@ -65,7 +66,8 @@ void ScopeChecker::check(
+       Variety = AV_Automatic;
+     }
+     T = D->getType();
+-    Loc = D->getLocStart();
++    Loc = D->getBeginLoc();
++    IsStaticLocal = D->isStaticLocal();
+   } else if (const CXXNewExpr *E = Result.Nodes.getNodeAs<CXXNewExpr>("node")) {
+     // New allocates things on the heap.
+     // We don't consider placement new to do anything, as it doesn't actually
+@@ -73,7 +75,7 @@ void ScopeChecker::check(
+     if (!isPlacementNew(E)) {
+       Variety = AV_Heap;
+       T = E->getAllocatedType();
+-      Loc = E->getLocStart();
++      Loc = E->getBeginLoc();
+     }
+   } else if (const MaterializeTemporaryExpr *E =
+                  Result.Nodes.getNodeAs<MaterializeTemporaryExpr>("node")) {
+@@ -108,37 +110,32 @@ void ScopeChecker::check(
+       break;
+     }
+     T = E->getType().getUnqualifiedType();
+-    Loc = E->getLocStart();
++    Loc = E->getBeginLoc();
+   } else if (const CallExpr *E = Result.Nodes.getNodeAs<CallExpr>("node")) {
+     T = E->getType()->getPointeeType();
+     if (!T.isNull()) {
+       // This will always allocate on the heap, as the heapAllocator() check
+       // was made in the matcher
+       Variety = AV_Heap;
+-      Loc = E->getLocStart();
++      Loc = E->getBeginLoc();
+     }
+   }
+ 
+   // Error messages for incorrect allocations.
+-  const char* Stack =
+-      "variable of type %0 only valid on the stack";
+-  const char* Global =
+-      "variable of type %0 only valid as global";
+-  const char* Heap =
+-      "variable of type %0 only valid on the heap";
+-  const char* NonHeap =
+-      "variable of type %0 is not valid on the heap";
+-  const char* NonTemporary =
+-      "variable of type %0 is not valid in a temporary";
++  const char *Stack = "variable of type %0 only valid on the stack";
++  const char *Global = "variable of type %0 only valid as global";
++  const char *Heap = "variable of type %0 only valid on the heap";
++  const char *NonHeap = "variable of type %0 is not valid on the heap";
++  const char *NonTemporary = "variable of type %0 is not valid in a temporary";
++  const char *Temporary = "variable of type %0 is only valid as a temporary";
++  const char *StaticLocal = "variable of type %0 is only valid as a static "
++                            "local";
+ 
+-  const char* StackNote =
++  const char *StackNote =
+       "value incorrectly allocated in an automatic variable";
+-  const char* GlobalNote =
+-      "value incorrectly allocated in a global variable";
+-  const char* HeapNote =
+-      "value incorrectly allocated on the heap";
+-  const char* TemporaryNote =
+-      "value incorrectly allocated in a temporary";
++  const char *GlobalNote = "value incorrectly allocated in a global variable";
++  const char *HeapNote = "value incorrectly allocated on the heap";
++  const char *TemporaryNote = "value incorrectly allocated in a temporary";
+ 
+   // Report errors depending on the annotations on the input types.
+   switch (Variety) {
+@@ -148,11 +145,19 @@ void ScopeChecker::check(
+   case AV_Global:
+     StackClass.reportErrorIfPresent(*this, T, Loc, Stack, GlobalNote);
+     HeapClass.reportErrorIfPresent(*this, T, Loc, Heap, GlobalNote);
++    TemporaryClass.reportErrorIfPresent(*this, T, Loc, Temporary, GlobalNote);
++    if (!IsStaticLocal) {
++      StaticLocalClass.reportErrorIfPresent(*this, T, Loc, StaticLocal,
++                                            GlobalNote);
++    }
+     break;
+ 
+   case AV_Automatic:
+     GlobalClass.reportErrorIfPresent(*this, T, Loc, Global, StackNote);
+     HeapClass.reportErrorIfPresent(*this, T, Loc, Heap, StackNote);
++    TemporaryClass.reportErrorIfPresent(*this, T, Loc, Temporary, StackNote);
++    StaticLocalClass.reportErrorIfPresent(*this, T, Loc, StaticLocal,
++                                          StackNote);
+     break;
+ 
+   case AV_Temporary:
+@@ -160,12 +165,16 @@ void ScopeChecker::check(
+     HeapClass.reportErrorIfPresent(*this, T, Loc, Heap, TemporaryNote);
+     NonTemporaryClass.reportErrorIfPresent(*this, T, Loc, NonTemporary,
+                                            TemporaryNote);
++    StaticLocalClass.reportErrorIfPresent(*this, T, Loc, StaticLocal,
++                                          TemporaryNote);
+     break;
+ 
+   case AV_Heap:
+     GlobalClass.reportErrorIfPresent(*this, T, Loc, Global, HeapNote);
+     StackClass.reportErrorIfPresent(*this, T, Loc, Stack, HeapNote);
+     NonHeapClass.reportErrorIfPresent(*this, T, Loc, NonHeap, HeapNote);
++    TemporaryClass.reportErrorIfPresent(*this, T, Loc, Temporary, HeapNote);
++    StaticLocalClass.reportErrorIfPresent(*this, T, Loc, StaticLocal, HeapNote);
+     break;
+   }
+ }
+diff --git a/build/clang-plugin/ScopeChecker.h b/build/clang-plugin/ScopeChecker.h
+index 53aae17..edab241 100644
+--- a/build/clang-plugin/ScopeChecker.h
++++ b/build/clang-plugin/ScopeChecker.h
+@@ -10,8 +10,8 @@
+ class ScopeChecker : public BaseCheck {
+ public:
+   ScopeChecker(StringRef CheckName, ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/SprintfLiteralChecker.cpp b/build/clang-plugin/SprintfLiteralChecker.cpp
+index dc627fa..94e8e2f 100644
+--- a/build/clang-plugin/SprintfLiteralChecker.cpp
++++ b/build/clang-plugin/SprintfLiteralChecker.cpp
+@@ -5,31 +5,34 @@
+ #include "SprintfLiteralChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void SprintfLiteralChecker::registerMatchers(MatchFinder* AstMatcher) {
++void SprintfLiteralChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(
+-      callExpr(isSnprintfLikeFunc(),
+-        allOf(hasArgument(0, ignoringParenImpCasts(declRefExpr().bind("buffer"))),
+-                             anyOf(hasArgument(1, sizeOfExpr(hasIgnoringParenImpCasts(declRefExpr().bind("size")))),
+-                                   hasArgument(1, integerLiteral().bind("immediate")),
+-                                   hasArgument(1, declRefExpr(to(varDecl(hasType(isConstQualified()),
+-                                                                         hasInitializer(integerLiteral().bind("constant")))))))))
+-        .bind("funcCall"),
+-      this
+-  );
++      callExpr(
++          isSnprintfLikeFunc(),
++          allOf(hasArgument(
++                    0, ignoringParenImpCasts(declRefExpr().bind("buffer"))),
++                anyOf(hasArgument(1, sizeOfExpr(has(ignoringParenImpCasts(
++                                         declRefExpr().bind("size"))))),
++                      hasArgument(1, integerLiteral().bind("immediate")),
++                      hasArgument(1, declRefExpr(to(varDecl(
++                                         hasType(isConstQualified()),
++                                         hasInitializer(integerLiteral().bind(
++                                             "constant")))))))))
++          .bind("funcCall"),
++      this);
+ }
+ 
+-void SprintfLiteralChecker::check(
+-    const MatchFinder::MatchResult &Result) {
++void SprintfLiteralChecker::check(const MatchFinder::MatchResult &Result) {
+   if (!Result.Context->getLangOpts().CPlusPlus) {
+     // SprintfLiteral is not usable in C, so there is no point in issuing these
+     // warnings.
+     return;
+   }
+ 
+-  const char* Error =
+-    "Use %1 instead of %0 when writing into a character array.";
+-  const char* Note =
+-    "This will prevent passing in the wrong size to %0 accidentally.";
++  const char *Error =
++      "Use %1 instead of %0 when writing into a character array.";
++  const char *Note =
++      "This will prevent passing in the wrong size to %0 accidentally.";
+ 
+   const CallExpr *D = Result.Nodes.getNodeAs<CallExpr>("funcCall");
+ 
+@@ -50,28 +53,32 @@ void SprintfLiteralChecker::check(
+       return;
+     }
+ 
+-    diag(D->getLocStart(), Error, DiagnosticIDs::Error) << Name << Replacement;
+-    diag(D->getLocStart(), Note, DiagnosticIDs::Note) << Name;
++    diag(D->getBeginLoc(), Error, DiagnosticIDs::Error) << Name << Replacement;
++    diag(D->getBeginLoc(), Note, DiagnosticIDs::Note) << Name;
+     return;
+   }
+ 
+   const QualType QType = Buffer->getType();
+-  const ConstantArrayType *Type = dyn_cast<ConstantArrayType>(QType.getTypePtrOrNull());
++  const ConstantArrayType *Type =
++      dyn_cast<ConstantArrayType>(QType.getTypePtrOrNull());
+   if (Type) {
+     // Match calls like snprintf(x, 100, ...), where x is int[100];
+-    const IntegerLiteral *Literal = Result.Nodes.getNodeAs<IntegerLiteral>("immediate");
++    const IntegerLiteral *Literal =
++        Result.Nodes.getNodeAs<IntegerLiteral>("immediate");
+     if (!Literal) {
+       // Match calls like: const int y = 100; snprintf(x, y, ...);
+       Literal = Result.Nodes.getNodeAs<IntegerLiteral>("constant");
+     }
+ 
+-    // We're going to assume here that the bitwidth of both of these values fits within 64 bits.
+-    // and zero-extend both values to 64-bits before comparing them.
++    // We're going to assume here that the bitwidth of both of these values fits
++    // within 64 bits. and zero-extend both values to 64-bits before comparing
++    // them.
+     uint64_t Size = Type->getSize().getZExtValue();
+     uint64_t Lit = Literal->getValue().getZExtValue();
+     if (Size <= Lit) {
+-      diag(D->getLocStart(), Error, DiagnosticIDs::Error) << Name << Replacement;
+-      diag(D->getLocStart(), Note, DiagnosticIDs::Note) << Name;
++      diag(D->getBeginLoc(), Error, DiagnosticIDs::Error)
++          << Name << Replacement;
++      diag(D->getBeginLoc(), Note, DiagnosticIDs::Note) << Name;
+     }
+   }
+ }
+diff --git a/build/clang-plugin/SprintfLiteralChecker.h b/build/clang-plugin/SprintfLiteralChecker.h
+index 1e79534..bf40798 100644
+--- a/build/clang-plugin/SprintfLiteralChecker.h
++++ b/build/clang-plugin/SprintfLiteralChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class SprintfLiteralChecker : public BaseCheck {
+ public:
+-  SprintfLiteralChecker(StringRef CheckName,
+-                        ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  SprintfLiteralChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/StmtToBlockMap.h b/build/clang-plugin/StmtToBlockMap.h
+index 7124ef8..9db7342 100644
+--- a/build/clang-plugin/StmtToBlockMap.h
++++ b/build/clang-plugin/StmtToBlockMap.h
+@@ -38,7 +38,8 @@ inline SmallVector<const Stmt *, 1> getParentStmts(const Stmt *S,
+   return Result;
+ }
+ 
+-// This class is a modified version of the class from clang-tidy's ExprSequence.cpp
++// This class is a modified version of the class from clang-tidy's
++// ExprSequence.cpp
+ //
+ // Maps `Stmt`s to the `CFGBlock` that contains them. Some `Stmt`s may be
+ // contained in more than one `CFGBlock`; in this case, they are mapped to the
+@@ -48,7 +49,8 @@ inline SmallVector<const Stmt *, 1> getParentStmts(const Stmt *S,
+ class StmtToBlockMap {
+ public:
+   // Initializes the map for the given `CFG`.
+-  StmtToBlockMap(const CFG *TheCFG, ASTContext *TheContext) : Context(TheContext) {
++  StmtToBlockMap(const CFG *TheCFG, ASTContext *TheContext)
++      : Context(TheContext) {
+     for (const auto *B : *TheCFG) {
+       for (size_t I = 0; I < B->size(); ++I) {
+         if (Optional<CFGStmt> S = (*B)[I].getAs<CFGStmt>()) {
+@@ -64,7 +66,8 @@ public:
+   //
+   // The optional outparameter `Index` is set to the index into the block where
+   // the `Stmt` was found.
+-  const CFGBlock *blockContainingStmt(const Stmt *S, size_t *Index = nullptr) const {
++  const CFGBlock *blockContainingStmt(const Stmt *S,
++                                      size_t *Index = nullptr) const {
+     while (!Map.count(S)) {
+       SmallVector<const Stmt *, 1> Parents = getParentStmts(S, Context);
+       if (Parents.empty())
+@@ -73,7 +76,8 @@ public:
+     }
+ 
+     const auto &E = Map.lookup(S);
+-    if (Index) *Index = E.second;
++    if (Index)
++      *Index = E.second;
+     return E.first;
+   }
+ 
+diff --git a/build/clang-plugin/TrivialCtorDtorChecker.cpp b/build/clang-plugin/TrivialCtorDtorChecker.cpp
+index 37c9104..59576a5 100644
+--- a/build/clang-plugin/TrivialCtorDtorChecker.cpp
++++ b/build/clang-plugin/TrivialCtorDtorChecker.cpp
+@@ -5,15 +5,13 @@
+ #include "TrivialCtorDtorChecker.h"
+ #include "CustomMatchers.h"
+ 
+-void TrivialCtorDtorChecker::registerMatchers(MatchFinder* AstMatcher) {
++void TrivialCtorDtorChecker::registerMatchers(MatchFinder *AstMatcher) {
+   AstMatcher->addMatcher(cxxRecordDecl(hasTrivialCtorDtor()).bind("node"),
+                          this);
+ }
+ 
+-void TrivialCtorDtorChecker::check(
+-    const MatchFinder::MatchResult &Result) {
+-  const char* Error =
+-      "class %0 must have trivial constructors and destructors";
++void TrivialCtorDtorChecker::check(const MatchFinder::MatchResult &Result) {
++  const char *Error = "class %0 must have trivial constructors and destructors";
+   const CXXRecordDecl *Node = Result.Nodes.getNodeAs<CXXRecordDecl>("node");
+ 
+   if (!Node->hasDefinition()) {
+@@ -27,5 +25,5 @@ void TrivialCtorDtorChecker::check(
+                    Node->hasTrivialDefaultConstructor());
+   bool BadDtor = !Node->hasTrivialDestructor();
+   if (BadCtor || BadDtor)
+-    diag(Node->getLocStart(), Error, DiagnosticIDs::Error) << Node;
++    diag(Node->getBeginLoc(), Error, DiagnosticIDs::Error) << Node;
+ }
+diff --git a/build/clang-plugin/TrivialCtorDtorChecker.h b/build/clang-plugin/TrivialCtorDtorChecker.h
+index 7c60ae4..6b44016 100644
+--- a/build/clang-plugin/TrivialCtorDtorChecker.h
++++ b/build/clang-plugin/TrivialCtorDtorChecker.h
+@@ -9,10 +9,9 @@
+ 
+ class TrivialCtorDtorChecker : public BaseCheck {
+ public:
+-  TrivialCtorDtorChecker(StringRef CheckName,
+-                         ContextType *Context = nullptr)
+-    : BaseCheck(CheckName, Context) {}
+-  void registerMatchers(MatchFinder* AstMatcher) override;
++  TrivialCtorDtorChecker(StringRef CheckName, ContextType *Context = nullptr)
++      : BaseCheck(CheckName, Context) {}
++  void registerMatchers(MatchFinder *AstMatcher) override;
+   void check(const MatchFinder::MatchResult &Result) override;
+ };
+ 
+diff --git a/build/clang-plugin/Utils.h b/build/clang-plugin/Utils.h
+index ea7a1af..1198a82 100644
+--- a/build/clang-plugin/Utils.h
++++ b/build/clang-plugin/Utils.h
+@@ -5,8 +5,20 @@
+ #ifndef Utils_h__
+ #define Utils_h__
+ 
++#include "CustomAttributes.h"
++#include "ThirdPartyPaths.h"
+ #include "plugin.h"
+ 
++inline StringRef getFilename(const SourceManager &SM, SourceLocation Loc) {
++  // We use the presumed location to handle #line directives and such, so the
++  // plugin is friendly to icecc / sccache users.
++  auto PL = SM.getPresumedLoc(Loc);
++  if (PL.isValid()) {
++    return StringRef(PL.getFilename());
++  }
++  return SM.getFilename(Loc);
++}
++
+ // Check if the given expression contains an assignment expression.
+ // This can either take the form of a Binary Operator or a
+ // Overloaded Operator Call.
+@@ -33,17 +45,17 @@ inline bool hasSideEffectAssignment(const Expr *Expression) {
+   return false;
+ }
+ 
+-template <class T> inline bool ASTIsInSystemHeader(const ASTContext &AC, const T &D) {
++template <class T>
++inline bool ASTIsInSystemHeader(const ASTContext &AC, const T &D) {
+   auto &SourceManager = AC.getSourceManager();
+-  auto ExpansionLoc = SourceManager.getExpansionLoc(D.getLocStart());
++  auto ExpansionLoc = SourceManager.getExpansionLoc(D.getBeginLoc());
+   if (ExpansionLoc.isInvalid()) {
+     return false;
+   }
+   return SourceManager.isInSystemHeader(ExpansionLoc);
+ }
+ 
+-template<typename T>
+-inline StringRef getNameChecked(const T& D) {
++template <typename T> inline StringRef getNameChecked(const T &D) {
+   return D->getIdentifier() ? D->getName() : "";
+ }
+ 
+@@ -175,41 +187,11 @@ inline bool isInIgnoredNamespaceForImplicitConversion(const Decl *Declaration) {
+          Name == "testing";           // gtest
+ }
+ 
+-inline bool isIgnoredPathForImplicitCtor(const Decl *Declaration) {
+-  SourceLocation Loc = Declaration->getLocation();
+-  const SourceManager &SM = Declaration->getASTContext().getSourceManager();
+-  SmallString<1024> FileName = SM.getFilename(Loc);
+-  llvm::sys::fs::make_absolute(FileName);
+-  llvm::sys::path::reverse_iterator Begin = llvm::sys::path::rbegin(FileName),
+-                                    End = llvm::sys::path::rend(FileName);
+-  for (; Begin != End; ++Begin) {
+-    if (Begin->compare_lower(StringRef("skia")) == 0 ||
+-        Begin->compare_lower(StringRef("sfntly")) == 0 ||
+-        Begin->compare_lower(StringRef("angle")) == 0 ||
+-        Begin->compare_lower(StringRef("harfbuzz")) == 0 ||
+-        Begin->compare_lower(StringRef("hunspell")) == 0 ||
+-        Begin->compare_lower(StringRef("scoped_ptr.h")) == 0 ||
+-        Begin->compare_lower(StringRef("graphite2")) == 0 ||
+-        Begin->compare_lower(StringRef("icu")) == 0 ||
+-        Begin->compare_lower(StringRef("libcubeb")) == 0 ||
+-        Begin->compare_lower(StringRef("libstagefright")) == 0 ||
+-        Begin->compare_lower(StringRef("cairo")) == 0) {
+-      return true;
+-    }
+-    if (Begin->compare_lower(StringRef("chromium")) == 0) {
+-      // Ignore security/sandbox/chromium but not ipc/chromium.
+-      ++Begin;
+-      return Begin != End && Begin->compare_lower(StringRef("sandbox")) == 0;
+-    }
+-  }
+-  return false;
+-}
+-
+ inline bool isIgnoredPathForImplicitConversion(const Decl *Declaration) {
+   Declaration = Declaration->getCanonicalDecl();
+   SourceLocation Loc = Declaration->getLocation();
+   const SourceManager &SM = Declaration->getASTContext().getSourceManager();
+-  SmallString<1024> FileName = SM.getFilename(Loc);
++  SmallString<1024> FileName = getFilename(SM, Loc);
+   llvm::sys::fs::make_absolute(FileName);
+   llvm::sys::path::reverse_iterator Begin = llvm::sys::path::rbegin(FileName),
+                                     End = llvm::sys::path::rend(FileName);
+@@ -226,9 +208,10 @@ inline bool isIgnoredPathForImplicitConversion(const Decl *Declaration) {
+   return false;
+ }
+ 
+-inline bool isIgnoredPathForSprintfLiteral(const CallExpr *Call, const SourceManager &SM) {
+-  SourceLocation Loc = Call->getLocStart();
+-  SmallString<1024> FileName = SM.getFilename(Loc);
++inline bool isIgnoredPathForSprintfLiteral(const CallExpr *Call,
++                                           const SourceManager &SM) {
++  SourceLocation Loc = Call->getBeginLoc();
++  SmallString<1024> FileName = getFilename(SM, Loc);
+   llvm::sys::fs::make_absolute(FileName);
+   llvm::sys::path::reverse_iterator Begin = llvm::sys::path::rbegin(FileName),
+                                     End = llvm::sys::path::rend(FileName);
+@@ -239,6 +222,7 @@ inline bool isIgnoredPathForSprintfLiteral(const CallExpr *Call, const SourceMan
+         Begin->compare_lower(StringRef("google-breakpad")) == 0 ||
+         Begin->compare_lower(StringRef("gflags")) == 0 ||
+         Begin->compare_lower(StringRef("harfbuzz")) == 0 ||
++        Begin->compare_lower(StringRef("icu")) == 0 ||
+         Begin->compare_lower(StringRef("jsoncpp")) == 0 ||
+         Begin->compare_lower(StringRef("libstagefright")) == 0 ||
+         Begin->compare_lower(StringRef("mtransport")) == 0 ||
+@@ -306,30 +290,49 @@ inline bool typeIsRefPtr(QualType Q) {
+ // The method defined in clang for ignoring implicit nodes doesn't work with
+ // some AST trees. To get around this, we define our own implementation of
+ // IgnoreTrivials.
+-inline const Stmt *IgnoreTrivials(const Stmt *s) {
+-  while (true) {
++inline const Stmt *MaybeSkipOneTrivial(const Stmt *s) {
+     if (!s) {
+       return nullptr;
+-    } else if (auto *ewc = dyn_cast<ExprWithCleanups>(s)) {
+-      s = ewc->getSubExpr();
+-    } else if (auto *mte = dyn_cast<MaterializeTemporaryExpr>(s)) {
+-      s = mte->GetTemporaryExpr();
+-    } else if (auto *bte = dyn_cast<CXXBindTemporaryExpr>(s)) {
+-      s = bte->getSubExpr();
+-    } else if (auto *ice = dyn_cast<ImplicitCastExpr>(s)) {
+-      s = ice->getSubExpr();
+-    } else if (auto *pe = dyn_cast<ParenExpr>(s)) {
++    }
++    if (auto *ewc = dyn_cast<ExprWithCleanups>(s)) {
++      return ewc->getSubExpr();
++    }
++    if (auto *mte = dyn_cast<MaterializeTemporaryExpr>(s)) {
++      return mte->GetTemporaryExpr();
++    }
++    if (auto *bte = dyn_cast<CXXBindTemporaryExpr>(s)) {
++      return bte->getSubExpr();
++    }
++    if (auto *ce = dyn_cast<CastExpr>(s)) {
++      s = ce->getSubExpr();
++    }
++    if (auto *pe = dyn_cast<ParenExpr>(s)) {
+       s = pe->getSubExpr();
+-    } else {
+-      break;
+     }
++    // Not a trivial.
++    return s;
++}
++
++inline const Stmt *IgnoreTrivials(const Stmt *s) {
++  while (true) {
++    const Stmt* newS = MaybeSkipOneTrivial(s);
++    if (newS == s) {
++      return newS;
++    }
++    s = newS;
+   }
+ 
+-  return s;
++  // Unreachable
++  return nullptr;
+ }
+ 
+ inline const Expr *IgnoreTrivials(const Expr *e) {
+-  return cast<Expr>(IgnoreTrivials(static_cast<const Stmt *>(e)));
++  return cast_or_null<Expr>(IgnoreTrivials(static_cast<const Stmt *>(e)));
++}
++
++// Returns the input if the input is not a trivial.
++inline const Expr *MaybeSkipOneTrivial(const Expr *e) {
++  return cast_or_null<Expr>(MaybeSkipOneTrivial(static_cast<const Stmt *>(e)));
+ }
+ 
+ const FieldDecl *getBaseRefCntMember(QualType T);
+@@ -358,29 +361,122 @@ inline const FieldDecl *getBaseRefCntMember(QualType T) {
+   return Clazz ? getBaseRefCntMember(Clazz) : 0;
+ }
+ 
+-inline bool hasCustomAnnotation(const Decl *D, StringRef Spelling) {
+-  iterator_range<specific_attr_iterator<AnnotateAttr>> Attrs =
+-      D->specific_attrs<AnnotateAttr>();
++inline bool isPlacementNew(const CXXNewExpr *Expression) {
++  // Regular new expressions aren't placement new
++  if (Expression->getNumPlacementArgs() == 0)
++    return false;
++  const FunctionDecl *Declaration = Expression->getOperatorNew();
++  if (Declaration && hasCustomAttribute<moz_heap_allocator>(Declaration)) {
++    return false;
++  }
++  return true;
++}
+ 
+-  for (AnnotateAttr *Attr : Attrs) {
+-    if (Attr->getAnnotation() == Spelling) {
+-      return true;
++extern DenseMap<StringRef, bool> InThirdPartyPathCache;
++
++inline bool inThirdPartyPath(SourceLocation Loc, const SourceManager &SM) {
++  StringRef OriginalFileName = getFilename(SM, Loc);
++  auto pair = InThirdPartyPathCache.find(OriginalFileName);
++  if (pair != InThirdPartyPathCache.end()) {
++    return pair->second;
++  }
++
++  SmallString<1024> FileName = OriginalFileName;
++  llvm::sys::fs::make_absolute(FileName);
++
++  for (uint32_t i = 0; i < MOZ_THIRD_PARTY_PATHS_COUNT; ++i) {
++    auto PathB = sys::path::begin(FileName);
++    auto PathE = sys::path::end(FileName);
++
++    auto ThirdPartyB = sys::path::begin(MOZ_THIRD_PARTY_PATHS[i]);
++    auto ThirdPartyE = sys::path::end(MOZ_THIRD_PARTY_PATHS[i]);
++
++    for (; PathB != PathE; ++PathB) {
++      // Perform an inner loop to compare path segments, checking if the current
++      // segment is the start of the current third party path.
++      auto IPathB = PathB;
++      auto IThirdPartyB = ThirdPartyB;
++      for (; IPathB != PathE && IThirdPartyB != ThirdPartyE;
++           ++IPathB, ++IThirdPartyB) {
++        if (IPathB->compare_lower(*IThirdPartyB) != 0) {
++          break;
++        }
++      }
++
++      // We found a match!
++      if (IThirdPartyB == ThirdPartyE) {
++        InThirdPartyPathCache.insert(std::make_pair(OriginalFileName, true));
++        return true;
++      }
+     }
+   }
+ 
++  InThirdPartyPathCache.insert(std::make_pair(OriginalFileName, false));
+   return false;
+ }
+ 
+-inline bool isPlacementNew(const CXXNewExpr *Expression) {
+-  // Regular new expressions aren't placement new
+-  if (Expression->getNumPlacementArgs() == 0)
++inline bool inThirdPartyPath(const Decl *D, ASTContext *context) {
++  D = D->getCanonicalDecl();
++  SourceLocation Loc = D->getLocation();
++  const SourceManager &SM = context->getSourceManager();
++
++  return inThirdPartyPath(Loc, SM);
++}
++
++inline CXXRecordDecl *getNonTemplateSpecializedCXXRecordDecl(QualType Q) {
++  auto *D = Q->getAsCXXRecordDecl();
++
++  if (!D) {
++    auto TemplateQ = Q->getAs<TemplateSpecializationType>();
++    if (!TemplateQ) {
++      return nullptr;
++    }
++
++    auto TemplateDecl = TemplateQ->getTemplateName().getAsTemplateDecl();
++    if (!TemplateDecl) {
++      return nullptr;
++    }
++
++    D = dyn_cast_or_null<CXXRecordDecl>(TemplateDecl->getTemplatedDecl());
++    if (!D) {
++      return nullptr;
++    }
++  }
++
++  return D;
++}
++
++inline bool inThirdPartyPath(const Decl *D) {
++  return inThirdPartyPath(D, &D->getASTContext());
++}
++
++inline bool inThirdPartyPath(const Stmt *S, ASTContext *context) {
++  SourceLocation Loc = S->getBeginLoc();
++  const SourceManager &SM = context->getSourceManager();
++  auto ExpansionLoc = SM.getExpansionLoc(Loc);
++  if (ExpansionLoc.isInvalid()) {
++    return inThirdPartyPath(Loc, SM);
++  }
++  return inThirdPartyPath(ExpansionLoc, SM);
++}
++
++/// Polyfill for CXXOperatorCallExpr::isInfixBinaryOp()
++inline bool isInfixBinaryOp(const CXXOperatorCallExpr *OpCall) {
++#if CLANG_VERSION_FULL >= 400
++  return OpCall->isInfixBinaryOp();
++#else
++  // Taken from clang source.
++  if (OpCall->getNumArgs() != 2)
+     return false;
+-  const FunctionDecl *Declaration = Expression->getOperatorNew();
+-  if (Declaration && hasCustomAnnotation(Declaration,
+-                 "moz_heap_allocator")) {
++
++  switch (OpCall->getOperator()) {
++  case OO_Call:
++  case OO_Subscript:
+     return false;
++  default:
++    return true;
+   }
+-  return true;
++#endif
+ }
+ 
+ #endif
+
+diff --git a/build/clang-plugin/plugin.h b/build/clang-plugin/plugin.h
+index 83e806d..abbd5d3 100644
+--- a/build/clang-plugin/plugin.h
++++ b/build/clang-plugin/plugin.h
+@@ -5,12 +5,12 @@
+ #ifndef plugin_h__
+ #define plugin_h__
+ 
+-#include "clang/Analysis/CFG.h"
+ #include "clang/AST/ASTConsumer.h"
+ #include "clang/AST/ASTContext.h"
+ #include "clang/AST/RecursiveASTVisitor.h"
+ #include "clang/ASTMatchers/ASTMatchFinder.h"
+ #include "clang/ASTMatchers/ASTMatchers.h"
++#include "clang/Analysis/CFG.h"
+ #include "clang/Basic/Version.h"
+ #include "clang/Frontend/CompilerInstance.h"
+ #include "clang/Frontend/MultiplexConsumer.h"
+@@ -18,8 +18,8 @@
+ #include "llvm/ADT/DenseMap.h"
+ #include "llvm/Support/FileSystem.h"
+ #include "llvm/Support/Path.h"
+-#include <memory>
+ #include <iterator>
++#include <memory>
+ 
+ #define CLANG_VERSION_FULL (CLANG_VERSION_MAJOR * 100 + CLANG_VERSION_MINOR)
+ 
+@@ -33,30 +33,15 @@ typedef std::unique_ptr<ASTConsumer> ASTConsumerPtr;
+ typedef ASTConsumer *ASTConsumerPtr;
+ #endif
+ 
+-#ifndef HAVE_NEW_ASTMATCHER_NAMES
+-// In clang 3.8, a number of AST matchers were renamed to better match the
+-// respective AST node.  We use the new names, and #define them to the old
+-// ones for compatibility with older versions.
+-#define cxxConstructExpr constructExpr
+-#define cxxConstructorDecl constructorDecl
+-#define cxxMethodDecl methodDecl
+-#define cxxNewExpr newExpr
+-#define cxxRecordDecl recordDecl
+-#endif
+-
+-#ifndef HAS_ACCEPTS_IGNORINGPARENIMPCASTS
+-#define hasIgnoringParenImpCasts(x) has(x)
+-#else
+-// Before clang 3.9 "has" would behave like has(ignoringParenImpCasts(x)),
+-// however doing that explicitly would not compile.
+-#define hasIgnoringParenImpCasts(x) has(ignoringParenImpCasts(x))
++#if CLANG_VERSION_FULL < 800
++// Starting with Clang 8.0 some basic functions have been renamed
++#define getBeginLoc getLocStart
++#define getEndLoc getLocEnd
+ #endif
+ 
+-#endif
+-
+-// In order to support running our checks using clang-tidy, we implement a source
+-// compatible base check class called BaseCheck, and we use the preprocessor to
+-// decide which base class to pick.
++// In order to support running our checks using clang-tidy, we implement a
++// source compatible base check class called BaseCheck, and we use the
++// preprocessor to decide which base class to pick.
+ #ifdef CLANG_TIDY
+ #include "../ClangTidy.h"
+ typedef clang::tidy::ClangTidyCheck BaseCheck;
+@@ -64,3 +49,5 @@ typedef clang::tidy::ClangTidyContext ContextType;
+ #else
+ #include "BaseCheck.h"
+ #endif
++
++#endif // plugin_h__

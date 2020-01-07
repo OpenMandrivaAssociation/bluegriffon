@@ -1,4 +1,4 @@
-#%%define _disable_lto 1
+%define _disable_lto 1
 %define _enable_debug_packages %{nil}
 %define debug_package %{nil}
 %define	__requires_exclude ^libxul.so(.*)$
@@ -31,6 +31,7 @@ Patch6:         add-missing-files.patch
 Patch7:         fix-gcc-compiler-error-a.patch
 Patch8:         fix-explicit-syntax.patch
 
+
 # upstream patches
 Patch10:        improve-resiliance-of-SystemResourceMonitor.stop.patch
 Patch11:        remove-unused-variables-from-baseconfig.mk.patch
@@ -39,13 +40,12 @@ Patch13:        fix-chrome-unicode-includes.patch
 # custom default settings
 Patch14:        bluegriffon-3.1-updates.patch
 
-# clang-plugin patches
-Patch100:       mozbuild.patch
+# clang-plugin patches. Not needed now but maybe in future
 Patch101:       add-generated-txt-file.patch
 Patch102:       fix-clang-api-change.patch
+Patch103:	fix-silent-make-failure.patch
+Patch104:	fix-generated-file-error.patch
 
-#Patch30:       fix-nss-version.patch
-#Patch40:       firefox-gcc49.patch
 
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
@@ -127,13 +127,14 @@ patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
 %patch14 -p1
 
 # clang-plugin patches
-%patch100 -p1
+# clang-plugin patches. Not needed now but maybe in future
 #%%patch101 -p1
 #%%patch102 -p1
-
+#%%patch103 -p1
+#%%patch104 -p1
 # Otherwise build fails because it expects this dir to exist
 mkdir -p js/src/.deps
-#chmod +x %{_builddir}/build/clang-plugin/ThirdPartyPaths.py
+#chmod +x %{_builddir}/%{tarballdir}/build/clang-plugin/ThirdPartyPaths.py
 # See http://bluegriffon.org/pages/Build-BlueGriffon
 cat <<EOF_MOZCONFIG > .mozconfig 
 #CC=gcc
@@ -143,11 +144,11 @@ cat <<EOF_MOZCONFIG > .mozconfig
 CC=/usr/bin/clang
 CXX=/usr/bin/clang++
 #ac_add_options --enable-clang-plugin
-ac_add_options --enable-llvm-hacks
+#ac_add_options --enable-llvm-hacks
 
 mk_add_options PYTHON=/usr/bin/python2
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/opt
-mk_add_options MOZ_MAKE_FLAGS="-j8"
+mk_add_options MOZ_MAKE_FLAGS="-j1"
 ac_add_options --enable-release
 ac_add_options --with-distribution-id="OpenMandriva-Lx"
 ac_add_options --enable-application=%{name}
