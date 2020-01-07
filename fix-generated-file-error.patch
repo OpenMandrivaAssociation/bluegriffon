@@ -1,0 +1,23 @@
+--- gecko-dev-042b84a/build/clang-plugin/moz.build.orig	2020-01-06 12:05:51.735117274 +0000
++++ gecko-dev-042b84a/build/clang-plugin/moz.build	2020-01-06 12:11:24.572510590 +0000
+@@ -45,12 +45,14 @@
+ DISABLE_STL_WRAPPING = True
+ NO_VISIBILITY_FLAGS = True
+ 
+-GeneratedFile('ThirdPartyPaths.cpp', script="ThirdPartyPaths.py",
+-              entry_point="generate", inputs=[
+-                  '/tools/rewriting/ThirdPartyPaths.txt',
+-                  '/tools/rewriting/Generated.txt',
+-              ])
+-              
++GENERATED_FILES += ['ThirdPartyPaths.cpp']
++third_party_paths = GENERATED_FILES['ThirdPartyPaths.cpp']
++third_party_paths.script = "ThirdPartyPaths.py:generate"
++third_party_paths.inputs = [
++    '/tools/rewriting/ThirdPartyPaths.txt',
++    '/tools/rewriting/Generated.txt',
++]
++
+ # libc++ is required to build plugins against clang on OS X.
+ if CONFIG['HOST_OS_ARCH'] == 'Darwin':
+     HOST_CXXFLAGS += ['-stdlib=libc++']

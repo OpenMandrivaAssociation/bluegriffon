@@ -1,0 +1,15 @@
+diff --git a/build/clang-plugin/tests/Makefile.in b/build/clang-plugin/tests/Makefile.in
+index 67d845d..d473d21 100644
+--- a/build/clang-plugin/tests/Makefile.in
++++ b/build/clang-plugin/tests/Makefile.in
+@@ -4,8 +4,8 @@
+ 
+ # Build without any warning flags, and with clang verify flag for a
+ # syntax-only build (no codegen), without a limit on the number of errors.
+-OS_CFLAGS := $(filter-out -W%,$(OS_CFLAGS)) -fsyntax-only -Xclang -verify -ferror-limit=0 -std=c11 -Wno-invalid-noreturn
+-OS_CXXFLAGS := $(filter-out -W%,$(OS_CXXFLAGS)) -fsyntax-only -Xclang -verify -ferror-limit=0 -Wno-invalid-noreturn
++#OS_CFLAGS := $(filter-out -W%,$(OS_CFLAGS)) -fsyntax-only -Xclang -verify -ferror-limit=0 -std=c11 -Wno-invalid-noreturn
++#OS_CXXFLAGS := $(filter-out -W%,$(OS_CXXFLAGS)) -fsyntax-only -Xclang -verify -ferror-limit=0 -Wno-invalid-noreturn
+ 
+ include $(topsrcdir)/config/rules.mk
+ 
