@@ -46,6 +46,8 @@ Patch102:       fix-clang-api-change.patch
 Patch103:	fix-silent-make-failure.patch
 Patch104:	fix-generated-file-error.patch
 
+# rust patches
+Patch201:	fix-rust-lifetime-issue.patch
 
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
@@ -133,6 +135,10 @@ patch -p1 <%{_builddir}/%{tarballdir}/%{name}/config/gecko_dev_idl.patch
 #%%patch102 -p1
 #%%patch103 -p1
 #%%patch104 -p1
+
+# rust patches
+%patch201 -p1
+
 # Otherwise build fails because it expects this dir to exist
 mkdir -p js/src/.deps
 #chmod +x %{_builddir}/%{tarballdir}/build/clang-plugin/ThirdPartyPaths.py
@@ -149,7 +155,7 @@ CXX=/usr/bin/clang++
 
 mk_add_options PYTHON=/usr/bin/python2
 mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/opt
-mk_add_options MOZ_MAKE_FLAGS="-j1"
+mk_add_options MOZ_MAKE_FLAGS="-j16"
 ac_add_options --enable-release
 ac_add_options --with-distribution-id="OpenMandriva-Lx"
 ac_add_options --enable-application=%{name}
