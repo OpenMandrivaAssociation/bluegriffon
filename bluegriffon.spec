@@ -8,7 +8,7 @@
 Summary:	The next-generation Web Editor
 Name:		bluegriffon
 Version:	3.1
-Release:	3
+Release:	4
 License:	MPLv1.1 or GPLv2+ or LGPLv2+
 Group:		Editors
 Url:		http://bluegriffon.org/
@@ -59,7 +59,7 @@ BuildRequires:	hunspell-devel
 BuildRequires:	pkgconfig(gl)
 BuildRequires:	zip
 BuildRequires:	krb5-devel
-BuildRequires:	libiw-devel
+#BuildRequires:	libiw-devel
 BuildRequires:	pkgconfig(freetype2)
 BuildRequires:	pkgconfig(gtk+-3.0)
 BuildRequires:  pkgconfig(gtk+-2.0)
