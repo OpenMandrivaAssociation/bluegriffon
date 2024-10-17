@@ -11,7 +11,7 @@ Version:	3.1
 Release:	4
 License:	MPLv1.1 or GPLv2+ or LGPLv2+
 Group:		Editors
-Url:		http://bluegriffon.org/
+Url:		https://bluegriffon.org/
 Source0:	gecko-dev-%{srcversion}.tar.gz
 Source1:	%{name}-%{version}.tar.gz
 
