@@ -49,6 +49,7 @@ Patch104:	fix-generated-file-error.patch
 # rust patches
 Patch201:	fix-rust-lifetime-issue.patch
 
+BuildRequires:	make
 BuildRequires:	autoconf2.1
 BuildRequires:	desktop-file-utils
 BuildRequires:	yasm
